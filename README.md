@@ -1,7 +1,7 @@
 # Spotify-recorder
 
-Spotify-recorder is, as it name suggest a recorder for Spotify for Linux.
-Given a song name or an URI, it starts Spotify with the given song, records it in its maximum bitrate (160 for free accounts, 320 for premium accounts), and finaly close. There you go ! You get the song in MP3 format.
+Spotify-recorder is, as it name suggest a Spotify recorder for Linux.
+Given a song name URI or a share link, it starts Spotify with the given song, records it in its maximum bitrate (160 for free accounts, 320 for premium accounts), and finaly close. There you go ! You get the song in MP3 format.
 
 > This tool is (for now) Linux exclusive. As long as the dependencies are met, it should work fine.
 
@@ -20,7 +20,9 @@ Features to be added in future :
 
 ## Installation : 
 `git clone https://github.com/fm16191/spotify-recorder.git`
+
 `cd spotify-recorder`
+
 `pip install -r requirements.txt`
 
 ## Usage :
