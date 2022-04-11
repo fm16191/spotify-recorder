@@ -27,7 +27,9 @@ Features to be added in future :
 
 ## Usage :
 `py api.py query`
+
 `<query> could take the format of <song name author>`
+
 This will lookup for the query, and if multiple results, ask for one.
 Then starts Spotify with the song's uri, plays and records it, and then quit.
 
