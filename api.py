@@ -52,7 +52,7 @@ class sp_instance:
         while results['next']:
             results = self.sp.next(results)
             likes.extend(results['items'])
-        if filename: 
+        if filename:
             with open(filename, "w") as fw:
                 json.dump(likes, fw, indent=2)
         else: return likes
@@ -73,22 +73,33 @@ class sp_instance:
         # self.sp.pause_playback()
         # self.sp.start_playback()
 
-    def search_track(self, track_name = None, filename = None):
+    def search_sharelink(self, link=None, filename=None):
+        track_id = link.split("track/")[1].split("?")[0]
+        track = self.sp.track(track_id)
+        print(track)
+
+        if filename:
+            with open(filename, "w") as fw:
+                json.dump(track, fw, indent=2)
+        return track
+
+    def search_track(self, track_name=None, filename=None):
         if not track_name:
             print("No track specified")
             return None
-        results = self.sp.search(q='track:' + track_name, type='track')
+        results = self.sp.search(q='track:' + track_name, type='track', limit=20)
         results = results['tracks']
         tracks = results['items']
-        while results['next']:
-            results = self.sp.next(results)
-            tracks.extend(results['items'])
+        # while results['next']:
+        #     results = self.sp.next(results)
+        #     results = results['tracks']
+        #     tracks.extend(results['items'])
         if filename:
             with open(filename, "w") as fw:
                 json.dump(tracks, fw, indent=2)
         return tracks
 
-    def print_track_info(self, info = None):
+    def print_track_info(self, info=None):
         if not info:
             print("No track info, exit")
             return None
@@ -125,17 +136,16 @@ class sp_instance:
 def main():
     sp = sp_instance()
 
-    track_name = "Drifting Away FEWZ"
-    track_id = None
+    requested = "Drifting Away FEWZ"
+    track = None
     if len(sys.argv) > 1:
-        track_name = " ".join(sys.argv[1:])
+        requested = " ".join(sys.argv[1:])
 
-        if "spotify.com" in track_name:
-            track_id = track_name.split("track/")[1].split("?")[0]
+        if "spotify.com" in requested:
+            track = sp.search_sharelink(requested, "track.json")
 
-
-    if not track_id:
-        tracks = sp.search_track(track_name, "track.json")
+    if not track:
+        tracks = sp.search_track(requested, "track.json")
 
         id = 0
         if len(tracks) == 0:
@@ -144,15 +154,10 @@ def main():
         elif len(tracks) > 1:
             INFO("\n".join([f"{itrack} : {track['name']} - {', '.join([artist['name'] for artist in track['artists']])} [{track['album']['name']}]" for itrack, track in enumerate(tracks)]))
             id = input("Choose id : ")
-            if not id.isnumeric():
-                DERROR("must be numeric")
+            if not id.isnumeric() or int(id) < 0 or int(id) > len(tracks)-1:
+                DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
                 return
-            id = int(id)
-            if id < 0 or id > len(tracks)-1:
-                DERROR("id out of range")
-                return
-
-        track = tracks[id]
+        track = tracks[int(id)]
 
     sp.print_track_info(track)
     uri = track['uri']
@@ -161,10 +166,7 @@ def main():
     DINFO(duration_ms)
     filename = f"{track['name']} - {', '.join([artist['name'] for artist in track['artists']])}"
     filename = filename.replace(" ","_")
-    os.system(f"./spotdl_song.sh {uri} '{filename}' {int(duration_ms/1000)+1}")
-
-
-
+    os.system(f"./spotdl.sh {uri} '{filename}' {int(duration_ms/1000)+1}")
 
 
 if __name__ == "__main__":

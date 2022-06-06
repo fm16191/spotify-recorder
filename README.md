@@ -1,7 +1,12 @@
 # Spotify-recorder
 
 Spotify-recorder is, as it name suggest a Spotify recorder for Linux.
-Given a song name URI or a share link, it starts Spotify with the given song, records it in its maximum bitrate (160 for free accounts, 320 for premium accounts), and finaly close. There you go ! You get the song in MP3 format.
+Given a song name, or its share link, starts Spotify, plays and records the song at its best quality, then exits. As simple as that !
+
+Songs recorded at 320kbps bitrate by default.
+
+FYI, Spotify has a much higher quality than its YouTube equivalent, so I highly recommend it when possible. Check the *Why record from Spotify instead of downloading the song from YouTube ?* section for more information.
+
 
 > This tool is (for now) Linux exclusive. As long as the dependencies are met, it should work fine.
 
@@ -9,7 +14,7 @@ Given a song name URI or a share link, it starts Spotify with the given song, re
 
 ## Features :
 - Record a song given a title name
-- Record a song given an URI/share link
+- Record a song given a share link
 
 Features to be added in future :
 - Add bitrate and file extension choice support.
@@ -18,6 +23,11 @@ Features to be added in future :
 - Record multiple songs, and split them.
 - Add support for pipewire
 
+## Dependencies :
+`Python 3+` with `python-dotenv` and `spotipy` modules.
+
+`jq, mp3splt, ffmpeg`
+
 ## Installation : 
 `git clone https://github.com/fm16191/spotify-recorder.git`
 
@@ -25,15 +35,25 @@ Features to be added in future :
 
 `pip install -r requirements.txt`
 
+## Set up :
+
+Get your Spotify API credentials
+1. Go to [Spotify's developper page](https://developer.spotify.com/dashboard/applications) and create an application.
+
+2. Go to "Edit Settings" 
+ - In the "Website" input, put `http://localhost:8888`
+ - In the "Redirect URIs" input, put `http://localhost:8888/callback`
+
+3. Edit the .env file and replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` by your respectives CLIENT_ID and CLIENT_SECRET from the Spotify app just created
+
 ## Usage :
-`py api.py query`
+`py api.py <song name author>`
 
-`<query> could take the format of <song name author>`
+`py api.py <share link>`
 
-This will lookup for the query, and if multiple results, ask for one.
-Then starts Spotify with the song's uri, plays and records it, and then quit.
+Unless given the share link, this will lookup for the query, and if multiple results, ask for one.
 
-final files
+Once song identified, Spotify will start, play the song while being recorded, and then quit.
 
 ## Recommended Spotify setup
 
@@ -45,18 +65,32 @@ Improve audio quality
 
 
 ## Recommended pulseaudio setup
-- In `/etc/pulse` edit the `default.pa` file and uncomment the `load-module module-udev-detect`, and change it for `load-module module-udev-detect tsched=0`
-This would greatly improve the sink latency for recording
+- Edit the `/etc/pulse/pulse.pa` file
+  - Look for the `load-module module-udev-detect` line and comment it.
+  - Add the `load-module module-udev-detect tsched=0` line below
 
-- In `/etc/pulse` edit the `daemon.conf` file and add `avoir-resampling = true`
-If you still getting audio crackling, you can overwrite the defaults for `default-fragments = 2` and `default-fragment-size-msec = 10`
+   This would greatly improve the sink latency for recording
 
-## Dependances :
-`Python 3+` with `python-dotenv` and `spotipy` modules.
 
-`jq, mp3splt, ffmpeg`
-
+- Edit the `/etc/pulse/daemon.conf` file
+  - Add `avoir-resampling = true`
+   - If you still getting audio crackling, you can overwrite the defaults for `default-fragments = 2` and `default-fragment-size-msec = 10`
 
 ## Known issues : 
 
-*Due to Pulseaudio sink latency, after a while, audio might start to overwrite itself, resulting in an awful output.* **Solution** -> restart Spotify
+> Please first refer to the "Recommended Spotify setup" and "Recommended pulseaudio setup" tabs.
+
+- Due to Pulseaudio sink latency, after a while, audio might start to overwrite itself, resulting in an awful output.
+   **Solution** : restart Spotify
+
+## *Why record from Spotify instead of downloading the song from YouTube ?*
+
+1. > Spotify has much better sound quality than YouTube, and the recording hardly affects the quality from what I tested, as long as you follow the "Recommended configuration for Spotify" section.
+   >
+   > For your information, YouTube's audio quality is capped at 128kbps, while Spotify's audio quality defaults to 160kbps, up to 320kbps for premium accounts. 
+   >
+   > In addition, YouTube normalizes the audio to further reduce storage, as soon as it is uploaded, an option that can be disabled on Spotify
+   >
+   > (But how much is it a difference ? *Unless you don't care much about audio quality, the difference is pretty noticeable. I'll post some experiments I've done to illustrate the difference sometime.*)
+2. > Some music has an intro on YouTube, which would require post processing to remove it, which is not the case on Spotify
+3. > Sometimes the music you're looking for is just not available on YouTube :)
