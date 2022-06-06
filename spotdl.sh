@@ -1,6 +1,7 @@
 #!/bin/sh
 ### SPOTIFY RECORDER
 
+# Get Spotify's pulseaudio sink ID
 get_spotify_sink(){
     spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1)
 }
@@ -9,20 +10,19 @@ get_spotify_sink(){
 mkdir -p songs_build
 mkdir -p songs
 
-filename="test_audio"
-
-# START RECORD BEFORE (LATENCY)
 uri=$1
 filename="$2"
 duration="$3"
 
-if [ "$uri" != none ];
-then
-    pkill spotify
-    spotify --uri="$uri" > /dev/null 2>&1 &
+if [ -z "$uri" ] || [ -z "$filename" ] || [ -z "$duration" ]; then
+    echo "Invalid usage, missing uri, filename or song duration."
+    echo "Usage : $0 [URI] [filename] [song duration]"
 fi
 
-# SELECT SINK
+# Start Spotify using URI
+pkill spotify
+spotify --uri="$uri" > /dev/null 2>&1 &
+
 export LANG="en_EN.UTF-8"
 
 # Wait until Spotify's sink is spotted
