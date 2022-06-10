@@ -29,7 +29,7 @@ Features to be added in future :
 `jq, mp3splt, ffmpeg`
 
 ## Installation : 
-`git clone https://github.com/fm16191/spotify-recorder.git`
+`git clone --recurse-submodules https://github.com/fm16191/spotify-recorder.git`
 
 `cd spotify-recorder`
 
