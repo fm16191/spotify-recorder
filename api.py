@@ -76,7 +76,6 @@ class sp_instance:
     def search_sharelink(self, link=None, filename=None):
         track_id = link.split("track/")[1].split("?")[0]
         track = self.sp.track(track_id)
-        print(track)
 
         if filename:
             with open(filename, "w") as fw:
@@ -166,7 +165,7 @@ def main():
     DINFO(duration_ms)
     filename = f"{track['name']} - {', '.join([artist['name'] for artist in track['artists']])}"
     filename = filename.replace(" ","_")
-    os.system(f"./spotdl.sh {uri} '{filename}' {int(duration_ms/1000)+1}")
+    os.system(f"./spotdl.sh {uri} \"{filename}\" {int(duration_ms/1000)+1}")
 
 
 if __name__ == "__main__":
