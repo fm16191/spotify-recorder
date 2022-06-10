@@ -1,4 +1,5 @@
 import spotipy
+from spotipy.exceptions import *
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 import dotenv
 import json
@@ -89,10 +90,12 @@ class sp_instance:
         results = self.sp.search(q='track:' + track_name, type='track', limit=20)
         results = results['tracks']
         tracks = results['items']
+
         # while results['next']:
         #     results = self.sp.next(results)
         #     results = results['tracks']
         #     tracks.extend(results['items'])
+
         if filename:
             with open(filename, "w") as fw:
                 json.dump(tracks, fw, indent=2)
@@ -102,9 +105,9 @@ class sp_instance:
         if not info:
             print("No track info, exit")
             return None
-        DINFO(f"""
+        INFO(f"""
         name : {info['name']}
-        Type : {info['type']}
+        type : {info['type']}
         duration_ms : {info['duration_ms']}
         id : {info['id']}
         popularity : {info['popularity']}
@@ -135,37 +138,49 @@ class sp_instance:
 def main():
     sp = sp_instance()
 
-    requested = "Drifting Away FEWZ"
-    track = None
+    if len(sys.argv) == 1:
+        INFO(f"Usage : python {sys.argv[0]} <query> or <share link>\n")
+        print(f"Example : python {sys.argv[0]} song name author")
+        print(f"          python {sys.argv[0]} https://open.spotify.com/track/X?si=Y")
+        return
+
     if len(sys.argv) > 1:
         requested = " ".join(sys.argv[1:])
 
-        if "spotify.com" in requested:
-            track = sp.search_sharelink(requested, "track.json")
+        if "open.spotify.com" in requested:
+            try:
+                track = sp.search_sharelink(requested, "track.json")
+            except SpotifyException as e:
+                ERROR(f"Track was not found")
+                exit
+            except Exception as e:
+                DERROR(f"Track couldn't be found. Unexpected exception")
+                exit
+            else:
+                artists = f"{', '.join([artist['name'] for artist in track['artists']])}"
+                DINFO(f"{track['name']} - {artists} found")
+        else:
+            tracks = sp.search_track(requested, "track.json")
 
-    if not track:
-        tracks = sp.search_track(requested, "track.json")
-
-        id = 0
-        if len(tracks) == 0:
-            ERROR("No song found.")
-            return
-        elif len(tracks) > 1:
-            INFO("\n".join([f"{itrack} : {track['name']} - {', '.join([artist['name'] for artist in track['artists']])} [{track['album']['name']}]" for itrack, track in enumerate(tracks)]))
-            id = input("Choose id : ")
-            if not id.isnumeric() or int(id) < 0 or int(id) > len(tracks)-1:
-                DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
+            id = 0
+            if len(tracks) == 0:
+                ERROR("No song found.")
                 return
-        track = tracks[int(id)]
+            elif len(tracks) > 1:
+                INFO("\n".join([f"{itrack} : {track['name']} - {', '.join([artist['name'] for artist in track['artists']])} [{track['album']['name']}]" for itrack, track in enumerate(tracks)]))
+                id = input("Choose id : ")
+                if not id.isnumeric() or int(id) < 0 or int(id) > len(tracks)-1:
+                    DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
+                    return
+            track = tracks[int(id)]
 
     sp.print_track_info(track)
     uri = track['uri']
-    DINFO(uri)
     duration_ms = track['duration_ms']
-    DINFO(duration_ms)
+    duration_s = int(duration_ms / 1000) + 1
     filename = f"{track['name']} - {', '.join([artist['name'] for artist in track['artists']])}"
     filename = filename.replace(" ","_")
-    os.system(f"./spotdl.sh {uri} \"{filename}\" {int(duration_ms/1000)+1}")
+    os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
 
 
 if __name__ == "__main__":
