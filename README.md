@@ -47,9 +47,9 @@ Get your Spotify API credentials
 3. Edit the .env file and replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` by your respectives CLIENT_ID and CLIENT_SECRET from the Spotify app just created
 
 ## Usage :
-`py api.py <song name author>`
+`python3 api.py <song name author>`
 
-`py api.py <share link>`
+`python3 api.py <share link>`
 
 Unless given the share link, this will lookup for the query, and if multiple results, ask for one.
 
