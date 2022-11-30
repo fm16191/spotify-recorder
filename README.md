@@ -17,16 +17,18 @@ FYI, Spotify has a much higher quality than its YouTube equivalent, so I highly 
 - Record a song given a share link
 
 Features to be added in future :
-- Add bitrate and file extension choice support.
-- Record a song based on user's likes.
-- Record the current played song.
-- Record multiple songs, and split them.
-- Add support for pipewire
+- [] Migrate to argparse
+- [] Add bitrate and file extension choice support.
+- [] Record a song based on user's likes.
+- [] Record the current played song.
+- [] Record multiple songs, and split them.
+- [] Add support for pipewire
+- [] Filter tracks by user's market availability
 
 ## Dependencies :
 `Python 3+` with `python-dotenv` and `spotipy` modules.
 
-`jq, mp3splt, ffmpeg`
+`jq, mp3splt, ffmpeg, pulseaudio-utils`
 
 ## Installation : 
 `git clone --recurse-submodules https://github.com/fm16191/spotify-recorder.git`
@@ -34,6 +36,12 @@ Features to be added in future :
 `cd spotify-recorder`
 
 `pip install -r requirements.txt`
+
+- Ubuntu:
+   sudo apt install jq mp3splt ffmpeg pulseaudio pulseaudio-utils
+
+- Arch :
+   sudo pacman -S ffmpeg mp3splt jq pulseaudio
 
 ## Set up :
 
@@ -85,12 +93,12 @@ Improve audio quality
 
 ## *Why record from Spotify instead of downloading the song from YouTube ?*
 
-1. > Spotify has much better sound quality than YouTube, and the recording hardly affects the quality from what I tested, as long as you follow the "Recommended configuration for Spotify" section.
-   >
-   > For your information, YouTube's audio quality is capped at 128kbps, while Spotify's audio quality defaults to 160kbps, up to 320kbps for premium accounts. 
-   >
-   > In addition, YouTube normalizes the audio to further reduce storage, as soon as it is uploaded, an option that can be disabled on Spotify
-   >
-   > (But how much is it a difference ? *Unless you don't care much about audio quality, the difference is pretty noticeable. I'll post some experiments I've done to illustrate the difference sometime.*)
-2. > Some music has an intro on YouTube, which would require post processing to remove it, which is not the case on Spotify
-3. > Sometimes the music you're looking for is just not available on YouTube :)
+1. Spotify has much better sound quality than YouTube, and the recording hardly affects the quality from what I tested, as long as you follow the "Recommended configuration for Spotify" section.
+
+   For your information, YouTube's audio quality is capped at 128kbps, while Spotify's audio quality defaults to 160kbps, up to 320kbps for premium accounts. 
+
+   In addition, YouTube normalizes the audio to further reduce storage, as soon as it is uploaded, an option that can be disabled on Spotify
+
+   (But how much is it a difference ? *Unless you don't care much about audio quality, the difference is pretty noticeable. I'll post some experiments I've done to illustrate the difference sometime.*)
+2. Some music has an intro on YouTube, which would require post processing to remove it, which is not the case on Spotify
+3. Sometimes the music you're looking for is just not available on YouTube :)
