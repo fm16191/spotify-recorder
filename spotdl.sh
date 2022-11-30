@@ -1,6 +1,12 @@
 #!/bin/sh
 ### SPOTIFY RECORDER
 
+command -v jq >/dev/null 2>&1 || { echo >&2 "jq was not found"; exit 1; }
+command -v parecord >/dev/null 2>&1 || { echo >&2 "parecord was not found"; exit 1; }
+command -v spotify >/dev/null 2>&1 || { echo >&2 "spotify was not found"; exit 1; }
+command -v ffmpeg >/dev/null 2>&1 || { echo >&2 "ffmpeg was not found"; exit 1; }
+command -v mp3splt >/dev/null 2>&1 || { echo >&2 "mp3splt was not found"; exit 1; }
+
 # Get Spotify's pulseaudio sink ID
 get_spotify_sink(){
     spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1)
@@ -32,7 +38,7 @@ do
 done
 
 # Start recording
-parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename" &
+parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
 echo "Recording $uri as $filename.mp3 for $duration seconds"
 
@@ -42,7 +48,7 @@ pkill parecord
 pkill spotify
 
 # Convert file & Trim it
-ffmpeg -i "songs_build/$filename" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
+ffmpeg -i "songs_build/$filename.rec" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
 mp3splt -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "songs_build/$filename".mp3
 
 if [ ! -f "songs_build/$filename"_trimmed.mp3 ];
