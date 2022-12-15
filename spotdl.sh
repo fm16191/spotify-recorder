@@ -29,7 +29,7 @@ fi
 pactl_default_output=$(pactl get-default-sink)
 if ! pactl list sinks | grep rec-play > /dev/null;
 then
-    pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder] Record & Play"
+    pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play"
 fi
 # Set default sink for starting recording before spotify sink is spotted
 pactl set-default-sink rec-play
