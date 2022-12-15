@@ -25,11 +25,23 @@ if [ -z "$uri" ] || [ -z "$filename" ] || [ -z "$duration" ]; then
     echo "Usage : $0 [URI] [filename] [song duration]"
 fi
 
+# Get default output
+pactl_default_output=$(pactl get-default-sink)
+if ! pactl list sinks | grep rec-play > /dev/null;
+then
+    pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder] Record & Play"
+fi
+# Set default sink for starting recording before spotify sink is spotted
+pactl set-default-sink rec-play
+
 # Start Spotify using URI
 pkill spotify
 spotify --uri="$uri" > /dev/null 2>&1 &
 
 export LANG="en_EN.UTF-8"
+
+# Start recording before spotify_sink is spotted
+parecord --latency-msec=20 --device=rec-play.monitor --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
 # Wait until Spotify's sink is spotted
 while [ -z "$spotify_sink" ];
@@ -37,8 +49,11 @@ do
     get_spotify_sink
 done
 
+# Set back the default sink
+pactl set-default-sink "$pactl_default_output"
+
 # Start recording
-parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
+# parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
 echo "Recording $uri as $filename.mp3 for $duration seconds"
 
