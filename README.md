@@ -81,7 +81,7 @@ Improve audio quality
 
 
 - Edit the `/etc/pulse/daemon.conf` file
-  - Add `avoir-resampling = true`
+  - Add `avoid-resampling = true`
    - If you still getting audio crackling, you can overwrite the defaults for `default-fragments = 2` and `default-fragment-size-msec = 10`
 
 ## Known issues : 
