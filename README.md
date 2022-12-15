@@ -17,13 +17,14 @@ FYI, Spotify has a much higher quality than its YouTube equivalent, so I highly 
 - Record a song given a share link
 
 Features to be added in future :
-- [] Migrate to argparse
-- [] Add bitrate and file extension choice support.
-- [] Record a song based on user's likes.
-- [] Record the current played song.
-- [] Record multiple songs, and split them.
-- [] Add support for pipewire
-- [] Filter tracks by user's market availability
+- [ ] Finalize recording all tracks within a playlist
+- [ ] Migrate to argparse
+- [ ] Add bitrate and file extension choice support.
+- [ ] Record a song based on user's likes.
+- [ ] Record the current played song.
+- [ ] Record multiple songs, and split them.
+- [ ] Add support for pipewire
+- [ ] Filter tracks by user's market availability
 
 ## Dependencies :
 `Python 3+` with `python-dotenv` and `spotipy` modules.
@@ -38,10 +39,10 @@ Features to be added in future :
 `pip install -r requirements.txt`
 
 - Ubuntu:
-   sudo apt install jq mp3splt ffmpeg pulseaudio pulseaudio-utils
+   `sudo apt install jq mp3splt ffmpeg pulseaudio pulseaudio-utils`
 
 - Arch :
-   sudo pacman -S ffmpeg mp3splt jq pulseaudio
+   `sudo pacman -S ffmpeg mp3splt jq pulseaudio`
 
 ## Set up :
 
