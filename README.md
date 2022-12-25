@@ -15,10 +15,12 @@ FYI, Spotify has a much higher quality than its YouTube equivalent, so I highly 
 ## Features :
 - Record a song given a title name
 - Record a song given a share link
+- Record a playlist given a share link
 
 Features to be added in future :
-- [ ] Finalize recording all tracks within a playlist
-- [ ] Migrate to argparse
+- [x] Finalize recording all tracks within a playlist
+- [x] Migrate to argparse
+- [x] Skip recording if song already has been recorded
 - [ ] Add bitrate and file extension choice support.
 - [ ] Record a song based on user's likes.
 - [ ] Record the current played song.
@@ -56,9 +58,11 @@ Get your Spotify API credentials
 3. Edit the .env file and replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` by your respectives CLIENT_ID and CLIENT_SECRET from the Spotify app just created
 
 ## Usage :
-`python3 api.py <song name author>`
+`python3 api.py <song name author>` to search and record a song given an input
 
-`python3 api.py <share link>`
+`python3 api.py https://open.spotify.com/track/X` to record a song from it's share link
+
+`python3 api.py https://open.spotify.com/playlist/X` to record all songs from a playlist's share link
 
 Unless given the share link, this will lookup for the query, and if multiple results, ask for one.
 
