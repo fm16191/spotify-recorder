@@ -49,9 +49,6 @@ do
     get_spotify_sink
 done
 
-# Set back the default sink
-pactl set-default-sink "$pactl_default_output"
-
 # Start recording
 # parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
@@ -72,3 +69,6 @@ then
 else
     mv "songs_build/$filename"_trimmed.mp3 songs/"$(echo "$filename" | sed s/_/\ /g)".mp3
 fi;
+
+# Set back the default sink
+pactl set-default-sink "$pactl_default_output"
