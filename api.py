@@ -6,8 +6,10 @@ import json
 import os
 import sys
 from utils import *
-import subprocess
+# import subprocess
 import argparse
+import mutagen
+import requests
 
 dotenv.load_dotenv()
 
@@ -112,11 +114,14 @@ class sp_instance:
 
         if filepath := self.check_file_exists(filename):
             DINFO(f"Song was already recorded at {filepath}")
-            return True
+            # return True
 
         filename = filename.replace(" ", "_")
         if not filepath or replace:
             os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
+
+        self.edit_metadata(filepath, track_info)
+
 
     def search_track(self, track_name=None, filename=None):
         if not track_name:
@@ -175,6 +180,79 @@ class sp_instance:
 * external_ids['isrc'] : {info['external_ids']['isrc']}
 * preview_url : {info['preview_url']}
 * uri : {info['uri']}""")
+
+    # Edit music metadata
+    def edit_metadata(self, filepath, track_info):
+        from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, WXXX
+        f = ID3()
+        # https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
+
+        # Update title
+        f.setall('TIT2', [TIT2(text=track_info['name'])])
+
+        # Update artist
+        f.setall('TPE1', [TPE1(text=', '.join([artist['name'] for artist in track_info['artists']]))])
+
+        # Update album
+        album = track_info['album']['name'] + (" - single" if track_info['album']['album_type'] == "single" else "")
+        if len(f.getall('TALB')) == 0:
+            f.setall('TALB', [TALB(text=album)])
+
+        # Update label
+        if len(f.getall('TPUB')) == 0:
+            f.setall('TPUB', [TPUB(text="spotify-recorder")])
+
+        # Update bpm
+        # if len(f.getall('TBPM')) == 0:
+        #     f.setall('TBPM', [TBPM(text="bpm")])
+
+        # Update Genre
+        if len(f.getall('TCON')) == 0 and "genres" in track_info["artists"]:
+            f.setall('TCON', [TCON(text=', '.join(g for g in track_info["artists"]["genres"]))])
+
+        # Update Release date
+        # #ID3 v2.3
+        # f.setall('TDRC', [])
+        # f.setall('TDAT', [TDAT(text=date)])
+        # f.setall('TYER', [TYER(text=str(date.year))])
+        #ID3 v2.4
+        f.setall('TDAT', [])
+        f.setall('TYER', [])
+        f.setall('TDRC', [TDRC(text=track_info['album']['release_date'])])
+
+        # Update Encoded by # TENC/TSSE
+        if len(f.getall('TENC')) == 0:
+            f.setall('TENC', [TENC(text="pulseaudio, ffmpeg, mp3splt via spotify-recorder")])
+
+        # Update track number
+        if len(f.getall('TRCK')) == 0:
+            f.setall('TRCK', [TRCK(text=str(track_info['track_number']))])
+            # info['album']['total_tracks']
+
+        # Update User defined URL link frame
+        if len(f.getall('WXXX')) == 0:
+            f.setall('WXXX', [WXXX(text=track_info['external_urls']['spotify'])])
+
+        # Cover
+        f.save(filepath)
+
+        link_artwork = track_info["album"]["images"][0]["url"]
+        # DINFO(link_artwork)
+        image_data = requests.get(link_artwork, stream=True).content
+        # DINFO(len(image_data))
+        mime = 'image/jpeg'
+        if '.png' in link_artwork:
+            mime = 'image/png'
+
+        audio = mutagen.File(filepath)
+        audio.tags.add(
+            APIC(
+                # encoding=3, # 3 is for utf-8
+                mime=mime, # image/jpeg or image/png
+                type=3, # 3 is for the cover image
+                desc=u'Cover',
+                data=image_data))
+        audio.save()
 
     __search_track = search_track
     # __get_likes = get_likes
@@ -239,7 +317,7 @@ def main():
             playlist = sp.playlist_by_id(id, "playlist.json")
 
             for track_info in playlist['tracks']['items']:
-                if track_info['is_local'] ==True:
+                if track_info['is_local'] == True :
                     # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
                     continue
                 track_info = track_info['track']
