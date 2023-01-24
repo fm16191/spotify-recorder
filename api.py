@@ -265,7 +265,7 @@ def main():
     parser.add_argument('-s', '--search', action='store', nargs=1, help="search for a song")
     parser.add_argument('--headless', action='store_true', default=False, help="enable spotify headless mode (requires xfvb)")
     parser.add_argument('--infos', action='store_true', default=False, help="print infos")
-    parser.add_argument('--no-download', action='store_true', default=False, help='don\'t actually download')
+    parser.add_argument('--no-record', action='store_true', default=False, help='don\'t actually record')
     parser.add_argument('--replace', action='store_true', default=False, help="replace song if already exist")
 
     args = parser.parse_args()
@@ -304,7 +304,7 @@ def main():
 
         if args.verbose or args.infos: sp.print_track_info(track_info)
 
-        if not args.no_download:
+        if not args.no_record:
             sp.record_track(track_info, args.replace)
         return
 
@@ -316,7 +316,7 @@ def main():
         if type == "track":
             track_info = sp.track_by_id(id)
             if args.verbose or args.infos: sp.print_track_info(track_info)
-            if not args.no_download:
+            if not args.no_record:
                 sp.record_track(track_info, args.replace)
 
         elif type == "playlist":
@@ -329,7 +329,7 @@ def main():
                 track_info = track_info['track']
                 # track_id = track_info['track']['id']
                 if args.verbose or args.infos: sp.print_track_info(track_info)
-                if not args.no_download:
+                if not args.no_record:
                     sp.record_track(track_info, args.replace)
 
 
