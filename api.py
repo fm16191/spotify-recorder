@@ -103,7 +103,7 @@ class sp_instance:
         filepath = f"songs/{filename}.mp3"
         return filepath if os.path.exists(filepath) else False
 
-    def record_track(self, track_info=None):
+    def record_track(self, track_info=None, replace=False):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
         duration_ms = track_info['duration_ms']
@@ -115,13 +115,12 @@ class sp_instance:
             return True
 
         filename = filename.replace(" ", "_")
-
-        os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
+        if not filepath or replace:
+            os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
 
     def search_track(self, track_name=None, filename=None):
         if not track_name:
-            DINFO("No track specified")
-            return None
+            return DINFO("No track specified")
         results = self.sp.search(q='track:' + track_name, type='track', limit=20)
         results = results['tracks']
         tracks = results['items']
@@ -138,8 +137,7 @@ class sp_instance:
 
     def playlist_by_id(self, playlist_id=None, filename=None):
         if not playlist_id:
-            INFO("No playlist specified")
-            return None
+            return INFO("No playlist specified")
         results = self.sp.playlist(playlist_id)
         if filename:
             with open(filename, "w") as fw:
@@ -148,16 +146,15 @@ class sp_instance:
 
     def print_track_info(self, info=None):
         if not info:
-            DINFO("No track info, exit")
-            return None
+            return DINFO("No track info, exit")
 
-
-# print(f"{C.BOLD}{C.GREEN}{'Times':5}{C.YELLOW}{'Time'}\t{C.CYAN}{'Window Name'}{C.END}\n")
+        duration = int(info['duration_ms'])
+        duration = f"{duration/60000:.0f}:{duration/1000%60:02.0f}" if duration else None
 
         print(f"""{C.BOLD}{C.YELLOW}Track{C.END}
 * name : {C.YELLOW}{info['name']}{C.END}
 * type : {info['type']}
-* duration_ms : {info['duration_ms']}
+* duration_ms : {duration}
 * id : {info['id']}
 * popularity : {info['popularity']}
 
@@ -165,7 +162,7 @@ class sp_instance:
 * artists_names : {C.YELLOW}{', '.join([artist['name'] for artist in info['artists']])}{C.END}
 * album : {info['album']['name']} ({info['album']['album_type']}) - {info['album']['id']}
 * album_image : {info['album']['images'][0]['url']}
-* album_release_date : {info['album']['release_date']} ({info['album']['release_date_precision']})
+* album_release_date : {info['album']['release_date']}
 * track_number : {info['track_number']} / {info['album']['total_tracks']}
 
 {C.BOLD}{C.YELLOW}More info{C.END}
@@ -185,10 +182,11 @@ class sp_instance:
 
 def main():
     parser = argparse.ArgumentParser(description='Spotify Recorder')
-    parser.add_argument('-v', '--verbose', action='store_true', default=False, help="Enable verbose mode")
+    parser.add_argument('-v', '--verbose', action='store_true', default=False, help="enable verbose mode")
     parser.add_argument("links", action='store', nargs='+')
-    parser.add_argument('-s', '--search', action='store', nargs=1, help="Search for a song")
-    parser.add_argument('--headless', action='store_true', default=False, help="Enable spotify headless mode (requires xfvb)")
+    parser.add_argument('-s', '--search', action='store', nargs=1, help="search for a song")
+    parser.add_argument('--headless', action='store_true', default=False, help="enable spotify headless mode (requires xfvb)")
+    parser.add_argument('--replace', action='store_true', default=False, help="replace song if already exist")
 
     args = parser.parse_args()
     # args, unknown = parser.parse_known_args()
@@ -214,16 +212,14 @@ def main():
 
         id = 0
         if len(tracks) == 0:
-            ERROR("No song found.")
-            return
+            return ERROR("No song found.")
         elif len(tracks) > 1:
             INFO("\n".join([
                 f"{itrack} : {track['name']} - {', '.join([artist['name'] for artist in track['artists']])} [{track['album']['name']}]"
                 for itrack, track in enumerate(tracks)]))
             id = input("Choose id : ")
             if not id.isnumeric() or int(id) < 0 or int(id) > len(tracks) - 1:
-                DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
-                return
+                return DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
         track_info = tracks[int(id)]
         if args.verbose: sp.print_track_info(track_info)
         sp.record_track(track_info)
