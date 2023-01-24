@@ -264,6 +264,8 @@ def main():
     parser.add_argument("links", action='store', nargs='+')
     parser.add_argument('-s', '--search', action='store', nargs=1, help="search for a song")
     parser.add_argument('--headless', action='store_true', default=False, help="enable spotify headless mode (requires xfvb)")
+    parser.add_argument('--infos', action='store_true', default=False, help="print infos")
+    parser.add_argument('--no-download', action='store_true', default=False, help='don\'t actually download')
     parser.add_argument('--replace', action='store_true', default=False, help="replace song if already exist")
 
     args = parser.parse_args()
@@ -299,8 +301,11 @@ def main():
             if not id.isnumeric() or int(id) < 0 or int(id) > len(tracks) - 1:
                 return DERROR(f"Must be an integer from 0 to {len(tracks)-1}")
         track_info = tracks[int(id)]
-        if args.verbose: sp.print_track_info(track_info)
-        sp.record_track(track_info)
+
+        if args.verbose or args.infos: sp.print_track_info(track_info)
+
+        if not args.no_download:
+            sp.record_track(track_info, args.replace)
         return
 
     for link in args.links:
@@ -310,8 +315,9 @@ def main():
 
         if type == "track":
             track_info = sp.track_by_id(id)
-            if args.verbose: sp.print_track_info(track_info)
-            sp.record_track(track_info)
+            if args.verbose or args.infos: sp.print_track_info(track_info)
+            if not args.no_download:
+                sp.record_track(track_info, args.replace)
 
         elif type == "playlist":
             playlist = sp.playlist_by_id(id, "playlist.json")
@@ -322,8 +328,9 @@ def main():
                     continue
                 track_info = track_info['track']
                 # track_id = track_info['track']['id']
-                if args.verbose: sp.print_track_info(track_info)
-                sp.record_track(track_info)
+                if args.verbose or args.infos: sp.print_track_info(track_info)
+                if not args.no_download:
+                    sp.record_track(track_info, args.replace)
 
 
 if __name__ == "__main__":
