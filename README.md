@@ -21,6 +21,9 @@ Features to be added in future :
 - [x] Finalize recording all tracks within a playlist
 - [x] Migrate to argparse
 - [x] Skip recording if song already has been recorded
+- [x] Add metadata (ID3 tagging)
+- [ ] Add option to start spotify headlessly
+- [ ] Make API only a feature, remove it's default necessity
 - [ ] Add bitrate and file extension choice support.
 - [ ] Record a song based on user's likes.
 - [ ] Record the current played song.
