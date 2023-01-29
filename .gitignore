@@ -1,0 +1,7 @@
+.env
+.cache
+__pycache__
+*.json
+songs
+songs_build
+test*
