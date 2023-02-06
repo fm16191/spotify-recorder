@@ -101,10 +101,6 @@ class sp_instance:
                 json.dump(track, fw, indent=2)
         return track
 
-    def check_file_exists(self, filename):
-        filepath = f"songs/{filename}.mp3"
-        return filepath if os.path.exists(filepath) else False
-
     def record_track(self, track_info=None, replace=False):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
@@ -112,16 +108,19 @@ class sp_instance:
         duration_s = int(duration_ms / 1000) + 1
         filename = f"{track_info['name']} - {','.join([artist['name'] for artist in track_info['artists']])}"
 
-        if filepath := self.check_file_exists(filename):
-            DINFO(f"Song was already recorded at {filepath}")
+        filename = filename.replace(" ", "_")
+        filepath = f"songs/{filename}.mp3"
+        if os.path.exists(filepath):
+            DINFO(f"An existing recorded file was found at {filepath}")
             # return True
 
-        filename = filename.replace(" ", "_")
         if not filepath or replace:
             os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
+            if not os.path.exists(filepath):
+                DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
+                return False
 
         self.edit_metadata(filepath, track_info)
-
 
     def search_track(self, track_name=None, filename=None):
         if not track_name:
@@ -323,7 +322,7 @@ def main():
             playlist = sp.playlist_by_id(id, "playlist.json")
 
             for track_info in playlist['tracks']['items']:
-                if track_info['is_local'] == True :
+                if track_info['is_local'] ==True:
                     # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
                     continue
                 track_info = track_info['track']
