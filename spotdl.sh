@@ -19,6 +19,7 @@ mkdir -p songs
 uri=$1
 filename="$2"
 duration="$3"
+verbose="$4"
 
 if [ -z "$uri" ] || [ -z "$filename" ] || [ -z "$duration" ]; then
     echo "Invalid usage, missing uri, filename or song duration."
@@ -29,8 +30,15 @@ fi
 pactl_default_output=$(pactl get-default-sink)
 if ! pactl list sinks | grep rec-play > /dev/null;
 then
+    echo "Load new module rec-play"
     pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play"
 fi
+
+if ! pactl list sinks | grep rec-play > /dev/null; then
+    echo "Load failed ... exit";
+    exit 1;
+fi
+
 # Set default sink for starting recording before spotify sink is spotted
 pactl set-default-sink rec-play
 
@@ -45,14 +53,14 @@ parecord --latency-msec=20 --device=rec-play.monitor --record --fix-channels --f
 
 # Wait until Spotify's sink is spotted
 while [ -z "$spotify_sink" ];
-do 
+do
     get_spotify_sink
 done
 
 # Start recording
 # parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
-echo "Recording $uri as $filename.mp3 for $duration seconds"
+echo "Recording $uri as \"$filename.mp3\" for $duration seconds"
 
 # Wait till the end & stop
 sleep "$duration"
@@ -60,8 +68,11 @@ pkill parecord
 pkill spotify
 
 # Convert file & Trim it
-ffmpeg -i "songs_build/$filename.rec" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
-mp3splt -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "songs_build/$filename".mp3
+echo "$verbose"
+[ -z "$verbose" ] && verbose_flags=" -hide_banner -loglevel error"
+ffmpeg $verbose_flags -i "songs_build/$filename.rec" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
+[ -z "$verbose" ] && verbose_flags="-q"
+mp3splt $verbose_flags -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "songs_build/$filename".mp3 | ( [ -z "$verbose" ] || grep -Ev "^ info:" )
 
 final_filepath="songs/$filename.mp3"
 

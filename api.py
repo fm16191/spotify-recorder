@@ -15,7 +15,10 @@ dotenv.load_dotenv()
 
 
 class sp_instance:
-    def __init__(self):
+    def __init__(self, args=None):
+        self.verbose = True if ('verbose' in args and args.verbose) else False
+        self.headless = True if ('headless' in args and args.headless) else False
+        self.infos = True if ('infos' in args and args.infos) else False
         self.sp = None
         # Basic manager
         # sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
@@ -116,7 +119,8 @@ class sp_instance:
             # return True
 
         if not exists or replace:
-            os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
+            spotdl_cmd = f"./spotdl.sh {uri} \"{filename}\" {duration_s} {'1' if self.verbose else ''}"
+            os.system(spotdl_cmd)
             if not os.path.exists(filepath):
                 DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
                 return False
@@ -273,7 +277,7 @@ def main():
     if args.verbose:
         DINFO(f"Arguments : {args}")
 
-    sp = sp_instance()
+    sp = sp_instance(args)
 
     if len(args.links) == 0:
         INFO(f"Usage : python {sys.argv[0]} <share link> or <query>\n")
