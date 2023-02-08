@@ -110,11 +110,12 @@ class sp_instance:
 
         filename = filename.replace(" ", "_")
         filepath = f"songs/{filename}.mp3"
-        if os.path.exists(filepath):
+        exists = os.path.exists(filepath)
+        if exists:
             DINFO(f"An existing recorded file was found at {filepath}")
             # return True
 
-        if not filepath or replace:
+        if not exists or replace:
             os.system(f"./spotdl.sh {uri} \"{filename}\" {duration_s}")
             if not os.path.exists(filepath):
                 DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
