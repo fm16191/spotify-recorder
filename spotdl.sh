@@ -63,12 +63,10 @@ pkill spotify
 ffmpeg -i "songs_build/$filename.rec" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
 mp3splt -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "songs_build/$filename".mp3
 
-if [ ! -f "songs_build/$filename"_trimmed.mp3 ];
-then
-    mv "songs_build/$filename.mp3" songs/"$(echo "$filename" | sed s/_/\ /g)".mp3
-else
-    mv "songs_build/$filename"_trimmed.mp3 songs/"$(echo "$filename" | sed s/_/\ /g)".mp3
-fi;
+final_filepath="songs/$filename.mp3"
+
+[ ! -f "songs_build/$filename"_trimmed.mp3 ] && f="songs_build/$filename.mp3" || f="songs_build/$filename"_trimmed.mp3;
+mv "$f" "$final_filepath"
 
 # Set back the default sink
 pactl set-default-sink "$pactl_default_output"
