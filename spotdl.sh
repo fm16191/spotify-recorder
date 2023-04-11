@@ -32,10 +32,14 @@ fi
 
 # Get default output
 pactl_default_output=$(pactl get-default-sink)
+# pactl_default_source=$(pactl get-default-source)
+
 if ! pactl list sinks | grep rec-play > /dev/null;
 then
     echo "Load new module rec-play"
-    pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play"
+    record_id=$(pactl load-module module-combine-sink sink_name=rec-play slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play" channels=2 channel_map=stereo remix=no)
+else
+    record_id=$(pactl list short modules | grep "rec-play" | grep -Eo "^[0-9]*")
 fi
 
 if ! pactl list sinks | grep rec-play > /dev/null; then
@@ -44,7 +48,7 @@ if ! pactl list sinks | grep rec-play > /dev/null; then
 fi
 
 # Set default sink for starting recording before spotify sink is spotted
-pactl set-default-sink rec-play
+# pactl set-default-sink rec-play
 
 # Start Spotify using URI
 pkill spotify
@@ -61,15 +65,17 @@ do
     get_spotify_sink
 done
 
+pactl move-sink-input "$spotify_sink" rec-play
+
 # Start recording
 # parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
 echo "Recording $uri as \"$filename.mp3\" for $duration seconds"
 
 # Wait till the end & stop
-sleep "$duration"
-pkill parecord
+sleep "$duration" # 0.05 to 0.1 lost (but we don't care as spotify takes some time to play)
 pkill spotify
+pkill parecord
 
 # Convert file & Trim it
 echo "$verbose"
@@ -83,5 +89,6 @@ final_filepath="songs/$filename.mp3"
 [ ! -f "songs_build/$filename"_trimmed.mp3 ] && f="songs_build/$filename.mp3" || f="songs_build/$filename"_trimmed.mp3;
 mv "$f" "$final_filepath"
 
-# Set back the default sink
+# Back to default settings
+pactl unload-module $record_id
 pactl set-default-sink "$pactl_default_output"
