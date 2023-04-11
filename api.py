@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import spotipy
 from spotipy.exceptions import *
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
