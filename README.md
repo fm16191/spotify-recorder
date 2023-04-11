@@ -34,20 +34,22 @@ Features to be added in future :
 ## Dependencies :
 `Python 3+` with `python-dotenv` and `spotipy` modules.
 
-`jq, mp3splt, ffmpeg, pulseaudio-utils`
+packages : `mp3splt, ffmpeg, pulseaudio-utils`
+
+core-utils : `grep, tr`
 
 ## Installation : 
-`git clone --recurse-submodules https://github.com/fm16191/spotify-recorder.git`
+`git clone https://github.com/fm16191/spotify-recorder.git`
 
 `cd spotify-recorder`
 
 `pip install -r requirements.txt`
 
 - Ubuntu:
-   `sudo apt install jq mp3splt ffmpeg pulseaudio pulseaudio-utils`
+   `sudo apt install mp3splt ffmpeg pulseaudio pulseaudio-utils`
 
 - Arch :
-   `sudo pacman -S ffmpeg mp3splt jq pulseaudio`
+   `sudo pacman -S ffmpeg mp3splt pulseaudio`
 
 ## Set up :
 
