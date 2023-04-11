@@ -83,7 +83,7 @@ pactl move-sink-input "$spotify_sink" "$module_name"
 # Start recording
 # parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
 
-printf "==> Recording %s as \"%s\" for %s seconds" "$uri" "$filename.mp3" "$duration"
+printf "==> Recording %s as \"%s\" for %s seconds\r" "$uri" "$filename.mp3" "$duration"
 
 # Wait till the end & stop
 sleep "$duration" # 0.05 to 0.1 lost (but we don't care as spotify takes some time to play)
@@ -100,7 +100,7 @@ final_filepath="songs/$filename.mp3"
 
 [ ! -f "songs_build/$filename"_trimmed.mp3 ] && f="songs_build/$filename.mp3" || f="songs_build/$filename"_trimmed.mp3;
 mv "$f" "$final_filepath"
-printf "\r[+] File saved at %s\n" "$final_filepath"
+printf "\033[K[+] File saved at %s\n" "$final_filepath"
 
 # Back to default settings
 pactl unload-module "$record_id"
