@@ -1,7 +1,9 @@
 #!/bin/sh
 ### SPOTIFY RECORDER
 
-command -v jq >/dev/null 2>&1 || { echo >&2 "jq was not found"; exit 1; }
+# command -v jq >/dev/null 2>&1 || { echo >&2 "jq was not found"; exit 1; }
+command -v grep >/dev/null 2>&1 || { echo >&2 "grep was not found"; exit 1; }
+command -v tr >/dev/null 2>&1 || { echo >&2 "tr was not found"; exit 1; }
 command -v parecord >/dev/null 2>&1 || { echo >&2 "parecord was not found"; exit 1; }
 command -v spotify >/dev/null 2>&1 || { echo >&2 "spotify was not found"; exit 1; }
 command -v ffmpeg >/dev/null 2>&1 || { echo >&2 "ffmpeg was not found"; exit 1; }
@@ -9,7 +11,9 @@ command -v mp3splt >/dev/null 2>&1 || { echo >&2 "mp3splt was not found"; exit 1
 
 # Get Spotify's pulseaudio sink ID
 get_spotify_sink(){
-    spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1)
+    # spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1)
+    # spotify_sink=$(pactl list sink-inputs | grep -E "Input #|media.name" | xargs | grep -Eoi "#[0-9]* media.name = Spotify" | grep -oi "[0-9]*") # 8x faster
+    spotify_sink=$(pactl list sink-inputs | grep -E "Input #|media.name" | tr -d "[:space:]" | tr -d "\"" | grep -Eoi "#[0-9]*media.name=Spotify" | grep -oi "[0-9]*") # 1.3x even faster + remove xargs dependency
 }
 
 
