@@ -32,7 +32,7 @@ Features to be added in future :
 - [ ] Filter tracks by user's market availability
 
 ## Dependencies :
-`Python 3+` with `python-dotenv` and `spotipy` modules.
+`Python 3+` with `python-dotenv`, `spotipy` and `mutagen` modules.
 
 packages : `mp3splt, ffmpeg, pulseaudio-utils`
 
