@@ -3,6 +3,8 @@
 Spotify-recorder is, as it name suggest a Spotify recorder for Linux.
 Given a song name, or its share link, starts Spotify, plays and records the song at its best quality, then exits. As simple as that !
 
+Works on both Pulseaudio and Pipewire.
+
 Songs recorded at 320kbps bitrate by default.
 
 FYI, Spotify has a much higher quality than its YouTube equivalent, so I highly recommend it when possible. Check the *Why record from Spotify instead of downloading the song from YouTube ?* section for more information.
@@ -28,13 +30,13 @@ Features to be added in future :
 - [ ] Record a song based on user's likes.
 - [ ] Record the current played song.
 - [ ] Record multiple songs, and split them.
-- [ ] Add support for pipewire
+- [x] Add support for pipewire
 - [ ] Filter tracks by user's market availability
 
 ## Dependencies :
 `Python 3+` with `python-dotenv`, `spotipy` and `mutagen` modules.
 
-packages : `mp3splt, ffmpeg, pulseaudio-utils`
+packages : `mp3splt, ffmpeg, pulseaudio-utils or pipewire-pulse`
 
 core-utils : `grep, tr`
 
@@ -46,10 +48,10 @@ core-utils : `grep, tr`
 `pip install -r requirements.txt`
 
 - Ubuntu:
-   `sudo apt install mp3splt ffmpeg pulseaudio pulseaudio-utils`
+   `sudo apt install mp3splt ffmpeg`
 
 - Arch :
-   `sudo pacman -S ffmpeg mp3splt pulseaudio`
+   `sudo pacman -S ffmpeg mp3splt`
 
 ## Set up :
 

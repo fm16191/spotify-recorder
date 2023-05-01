@@ -6,9 +6,19 @@ command -v spotify >/dev/null 2>&1 || { echo >&2 "spotify was not found"; exit 1
 command -v grep >/dev/null 2>&1 || { echo >&2 "grep was not found"; exit 1; }
 command -v tr >/dev/null 2>&1 || { echo >&2 "tr was not found"; exit 1; }
 command -v pactl >/dev/null 2>&1 || { echo >&2 "pactl was not found"; exit 1; }
-command -v parecord >/dev/null 2>&1 || { echo >&2 "parecord was not found"; exit 1; }
 command -v ffmpeg >/dev/null 2>&1 || { echo >&2 "ffmpeg was not found"; exit 1; }
 command -v mp3splt >/dev/null 2>&1 || { echo >&2 "mp3splt was not found"; exit 1; }
+
+# Check if sound server is pipewire
+pactl info | grep -i pipewire && pipewire=1 || pipewire=0
+printf "Sound Server : " 
+[ $pipewire = 1 ] && echo "PipeWire" || echo "PulseAudio"
+
+if [ $pipewire = 1 ]; then 
+    command -v pw-record >/dev/null 2>&1 || { echo >&2 "pw-record was not found"; exit 1; }
+else
+    command -v parecord >/dev/null 2>&1 || { echo >&2 "parecord was not found"; exit 1; }
+fi
 
 # Get Spotify's pulseaudio sink ID
 get_spotify_sink(){
@@ -38,26 +48,28 @@ if [ ! -z $verbose ]; then
     echo "* Verbose  : $verbose"
 fi
 
-# Get default output
-pactl_default_output=$(pactl get-default-sink)
-# pactl_default_source=$(pactl get-default-source)
-module_name="rec-play"
+if [ $pipewire = 0 ]; then
+    # Get default output
+    pactl_default_output=$(pactl get-default-sink)
+    # pactl_default_source=$(pactl get-default-source)
+    module_name="rec-play"
 
-if ! pactl list sinks | grep "$module_name" > /dev/null;
-then
-    printf "[ ] Loading new module %s" "$module_name"
-    record_id=$(pactl load-module module-combine-sink sink_name="$module_name" slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play") # channels=2 channel_map=stereo remix=no
-else
-    record_id=$(pactl list short modules | grep "$module_name" | grep -Eo "^[0-9]*")
-fi
+    if ! pactl list sinks | grep "$module_name" > /dev/null;
+    then
+        printf "[ ] Loading new module %s" "$module_name"
+        record_id=$(pactl load-module module-combine-sink sink_name="$module_name" slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play") # channels=2 channel_map=stereo remix=no
+    else
+        record_id=$(pactl list short modules | grep "$module_name" | grep -Eo "^[0-9]*")
+    fi
 
-if ! pactl list sinks | grep "$module_name" > /dev/null; then
-    printf "\r[!] Error : Loading new module %s\n" "$module_name"
-    exit 1;
-elif [ -n "$verbose" ]; then
-    printf "\r[x] Module loaded %s : %s\n" "$module_name" "$record_id"
-else
-    printf "\r"
+    if ! pactl list sinks | grep "$module_name" > /dev/null; then
+        printf "\r[!] Error : Loading new module %s\n" "$module_name"
+        exit 1;
+    elif [ -n "$verbose" ]; then
+        printf "\r[x] Module loaded %s : %s\n" "$module_name" "$record_id"
+    else
+        printf "\r"
+    fi
 fi
 
 # Set default sink for starting recording before spotify sink is spotted
@@ -70,7 +82,9 @@ spotify --uri="$uri" > /dev/null 2>&1 &
 export LANG="en_EN.UTF-8"
 
 # Start recording before spotify_sink is spotted
-(parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
+[ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
+
+# (pw-record --latency=20ms --target="$module_name".monitor "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
 
 # Wait until Spotify's sink is spotted
 while [ -z "$spotify_sink" ];
@@ -78,7 +92,12 @@ do
     get_spotify_sink
 done
 
-pactl move-sink-input "$spotify_sink" "$module_name"
+if [ $pipewire = 0 ]; then
+    pactl move-sink-input "$spotify_sink" "$module_name"
+else
+    # using `pw-top` to match spotify's format and rate
+    pw-record --latency=20ms --volume=1.0 --format=f32 --channel-map stereo --latency=20ms --rate 44100 --target="$spotify_sink" "songs_build/$filename.rec" &
+fi
 
 # Start recording
 # parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
@@ -86,9 +105,10 @@ pactl move-sink-input "$spotify_sink" "$module_name"
 printf "==> Recording %s as \"%s\" for %s seconds\r" "$uri" "$filename.mp3" "$duration"
 
 # Wait till the end & stop
-sleep "$duration" # 0.05 to 0.1 lost (but we don't care as spotify takes some time to play)
+sleep "$duration"
+# 0.05 to 0.1 lost (but we don't care as spotify takes some time to play)
 pkill spotify
-pkill parecord
+[ $pipewire = 1 ] && pkill pw-record || pkill parecord
 
 # Convert file & Trim it
 [ -z $verbose ] && verbose_flags="-hide_banner -loglevel error"
@@ -103,5 +123,5 @@ mv "$f" "$final_filepath"
 printf "\033[K[+] File saved at %s\n" "$final_filepath"
 
 # Back to default settings
-pactl unload-module "$record_id"
+[ $pipewire = 0 ] && pactl unload-module "$record_id"
 # pactl set-default-sink "$pactl_default_output"
