@@ -28,24 +28,28 @@ get_spotify_sink(){
 }
 
 
-mkdir -p songs_build
-mkdir -p songs
-
 uri=$1
-filename="$2"
+filepath="$2"
 duration="$3"
 verbose="$4"
 
-if [ -z "$uri" ] || [ -z "$filename" ] || [ -z "$duration" ]; then
-    echo "Invalid usage, missing uri, filename or song duration."
-    echo "Usage : $0 [URI] [filename] [song duration]"
+if [ -z "$uri" ] || [ -z "$filepath" ] || [ -z "$duration" ]; then
+    echo "Invalid usage, missing uri, filepath or song duration."
+    echo "Usage : $0 <URI> <filepath> <song duration> [verbose]"
 fi
 
+tmp_folder="songs_build"
+mkdir -p $tmp_folder
+mkdir -p $(dirname $filepath)
+
+tmp_filepath="$tmp_folder/${uri/*:/}"
+
 if [ ! -z $verbose ]; then
-    echo "* URI      : $uri"
-    echo "* filename : $filename"
-    echo "* duration : $duration"
-    echo "* Verbose  : $verbose"
+    echo "* URI          : $uri"
+    echo "* filepath     : $filepath"
+    echo "* duration     : $duration"
+    echo "* Verbose      : $verbose"
+    echo "* tmp_filepath : $tmp_filepath"
 fi
 
 if [ $pipewire = 0 ]; then
@@ -80,9 +84,9 @@ pkill spotify
 spotify --uri="$uri" > /dev/null 2>&1 &
 
 # Start recording before spotify_sink is spotted
-[ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
+[ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "$tmp_filepath.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
 
-# (pw-record --latency=20ms --target="$module_name".monitor "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
+# (pw-record --latency=20ms --target="$module_name".monitor "$tmp_filepath.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
 
 # Wait until Spotify's sink is spotted
 while [ -z "$spotify_sink" ];
@@ -94,13 +98,13 @@ if [ $pipewire = 0 ]; then
     pactl move-sink-input "$spotify_sink" "$module_name"
 else
     # using `pw-top` to match spotify's format and rate
-    pw-record --latency=20ms --volume=1.0 --format=f32 --channel-map stereo --latency=20ms --rate 44100 --target="$spotify_sink" "songs_build/$filename.rec" &
+    pw-record --latency=20ms --volume=1.0 --format=f32 --channel-map stereo --latency=20ms --rate 44100 --target="$spotify_sink" "$tmp_filepath.rec" &
 fi
 
 # Start recording
-# parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" &
+# parecord --latency-msec=1 --monitor-stream="$spotify_sink" --record --fix-channels --fix-format --fix-rate "$tmp_filepath.rec" &
 
-printf "==> Recording %s as \"%s\" for %s seconds\r" "$uri" "$filename.mp3" "$duration"
+printf "==> Recording %s as \"%s\" for %s seconds\r" "$uri" "$filepath" "$duration"
 
 # Wait till the end & stop
 sleep "$duration"
@@ -110,15 +114,13 @@ pkill spotify
 
 # Convert file & Trim it
 [ -z $verbose ] && verbose_flags="-hide_banner -loglevel error"
-ffmpeg $verbose_flags -y -i "songs_build/$filename.rec" -acodec mp3 -b:a 320k "songs_build/$filename.mp3"
+ffmpeg $verbose_flags -y -i "$tmp_filepath.rec" -acodec mp3 -b:a 320k "$tmp_filepath.mp3"
 [ -z $verbose ] && verbose_flags="-q"
-mp3splt $verbose_flags -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "songs_build/$filename".mp3 | ( [ -z "$verbose" ] || grep -Ev "^ info:" )
+mp3splt $verbose_flags -r -p rm -p min=0.3 -p trackmin="$(echo "$duration"-2 | bc)" "$tmp_filepath".mp3 | ( [ -z "$verbose" ] || grep -Ev "^ info:" )
 
-final_filepath="songs/$filename.mp3"
-
-[ ! -f "songs_build/$filename"_trimmed.mp3 ] && f="songs_build/$filename.mp3" || f="songs_build/$filename"_trimmed.mp3;
-mv "$f" "$final_filepath"
-printf "\033[K[+] File saved at %s\n" "$final_filepath"
+[ ! -f "$tmp_filepath"_trimmed.mp3 ] && f="$tmp_filepath.mp3" || f="$tmp_filepath"_trimmed.mp3;
+mv "$f" "$filepath"
+printf "\033[K[+] File saved at %s\n" "$filepath"
 
 # Back to default settings
 [ $pipewire = 0 ] && pactl unload-module "$record_id"
