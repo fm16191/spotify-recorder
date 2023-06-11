@@ -149,7 +149,13 @@ class sp_instance:
     def playlist_by_id(self, playlist_id=None, filename=None):
         if not playlist_id:
             return INFO("No playlist specified")
+
         results = self.sp.playlist(playlist_id)
+        tracks = results['tracks']
+        while tracks['next']:
+            tracks = self.sp.next(tracks)
+            results['tracks']['items'].extend(tracks['items'])
+
         if filename:
             with open(filename, "w") as fw:
                 json.dump(results, fw, indent=2)

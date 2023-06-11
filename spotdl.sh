@@ -79,8 +79,6 @@ fi
 pkill spotify
 spotify --uri="$uri" > /dev/null 2>&1 &
 
-export LANG="en_EN.UTF-8"
-
 # Start recording before spotify_sink is spotted
 [ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "songs_build/$filename.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
 
