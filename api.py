@@ -202,8 +202,11 @@ class sp_instance:
 
     # Edit music metadata
     def edit_metadata(self, filepath, track_info):
+        if self.verbose:
+            DINFO("Edit metadata")
+
         from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, WXXX
-        f = ID3()
+        f = ID3(filepath)
         # https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
 
         # Update title
@@ -214,20 +217,22 @@ class sp_instance:
 
         # Update album
         album = track_info['album']['name'] + (" - single" if track_info['album']['album_type'] == "single" else "")
-        if len(f.getall('TALB')) == 0:
-            f.setall('TALB', [TALB(text=album)])
+        # if len(f.getall('TALB')) == 0:
+        f.setall('TALB', [TALB(text=album)])
 
         # Update label
-        if len(f.getall('TPUB')) == 0:
-            f.setall('TPUB', [TPUB(text="spotify-recorder")])
+        # if len(f.getall('TPUB')) == 0:
+        f.setall('TPUB', [TPUB(text="spotify-recorder")])
 
         # Update bpm
         # if len(f.getall('TBPM')) == 0:
         #     f.setall('TBPM', [TBPM(text="bpm")])
 
         # Update Genre
-        if len(f.getall('TCON')) == 0 and "genres" in track_info["artists"]:
-            f.setall('TCON', [TCON(text=', '.join(g for g in track_info["artists"]["genres"]))])
+        # if len(f.getall('TCON')) == 0 and
+        if "genres" in track_info["artists"]:
+            genres = ', '.join(g for g in track_info["artists"]["genres"])
+            f.setall('TCON', [TCON(text=genres)])
 
         # Update Release date
         # #ID3 v2.3
@@ -240,21 +245,21 @@ class sp_instance:
         f.setall('TDRC', [TDRC(text=track_info['album']['release_date'])])
 
         # Update Encoded by # TENC/TSSE
-        if len(f.getall('TENC')) == 0:
-            f.setall('TENC', [TENC(text="pulseaudio, ffmpeg, mp3splt via spotify-recorder")])
+        # if len(f.getall('TENC')) == 0:
+        f.setall('TENC', [TENC(text="pulseaudio, ffmpeg, mp3splt via spotify-recorder")])
 
         # Update track number
-        if len(f.getall('TRCK')) == 0:
-            f.setall('TRCK', [TRCK(text=str(track_info['track_number']))])
-            # info['album']['total_tracks']
+        # if len(f.getall('TRCK')) == 0:
+        f.setall('TRCK', [TRCK(text=str(track_info['track_number']))])
+        # info['album']['total_tracks']
 
-        # Update User defined URL link frame
-        if len(f.getall('WXXX')) == 0:
-            f.setall('WXXX', [WXXX(text=track_info['external_urls']['spotify'])])
+        # Update User defined URL link frame (for spotify's URI)
+        if not "spotify_uri" in [frame.desc for frame in f.getall('WXXX')]:
+            f.setall('WXXX', [WXXX(encoding=Encoding.UTF8, desc=u'spotify_uri', url=track_info['uri'])])
+
+        f.save()
 
         # Cover
-        f.save(filepath)
-
         link_artwork = track_info["album"]["images"][0]["url"]
         # DINFO(link_artwork)
         image_data = requests.get(link_artwork, stream=True).content
