@@ -3,17 +3,19 @@
 from spotipy import Spotify
 from spotipy.exceptions import *
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
-import dotenv
-import json
-import os
-import sys
+from dotenv import load_dotenv
+from json import dump as json_dump
+from os import getenv, makedirs, system
+from os.path import exists
 from utils import *
 # import subprocess
-import argparse
+from argparse import ArgumentParser
 import mutagen
+from mutagen.id3 import Encoding
 import requests
+from sys import argv
 
-dotenv.load_dotenv()
+load_dotenv()
 
 OUT_FOLDER = "songs"
 
@@ -27,8 +29,8 @@ class sp_instance:
         # sp = Spotify(client_credentials_manager=SpotifyClientCredentials())
 
         # User-data manager
-        cid = os.getenv('SPOTIPY_CLIENT_ID')
-        secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+        cid = getenv('SPOTIPY_CLIENT_ID')
+        secret = getenv('SPOTIPY_CLIENT_SECRET')
 
         self.client_credentials_manager = SpotifyClientCredentials(client_id=cid, client_secret=secret)
 
@@ -50,6 +52,9 @@ class sp_instance:
             link = link.split("spotify:")[1]
             type = link.split(":")[0]
             id = link.split(":")[1]
+        else:
+            type = "track"
+            id = link
         return type, id
 
     # def check_latency(self):
@@ -65,7 +70,7 @@ class sp_instance:
     #         likes.extend(results['items'])
     #     if filename:
     #         with open(filename, "w") as fw:
-    #             json.dump(likes, fw, indent=2)
+    #             json_dump(likes, fw, indent=2)
     #     else:
     #         return likes
 
@@ -73,7 +78,7 @@ class sp_instance:
     #     playing = self.sp.current_playback()
     #     if filename:
     #         with open(filename, "w") as fw:
-    #             json.dump(playing, fw, indent=2)
+    #             json_dump(playing, fw, indent=2)
 
     #     cp = playing['item']
     #     print(f"Listening {cp['name']} by {', '.join([a['name'] for a in cp['artists']])} [{cp['album']['name']}] on {playing['device']['name']}")
@@ -86,7 +91,7 @@ class sp_instance:
     #     print(result.strip())
 
     # def record(self, filename):
-    #     os.system(f'parecord --latency-msec=1 -d alsa_output.pci-0000_05_00.6.analog-stereo.monitor --fix-channels --fix-format --fix-rate {filename} &')
+    #     system(f'parecord --latency-msec=1 -d alsa_output.pci-0000_05_00.6.analog-stereo.monitor --fix-channels --fix-format --fix-rate {filename} &')
 
     #     # premium required.
     #     # self.sp.pause_playback()
@@ -94,7 +99,6 @@ class sp_instance:
 
     # def search_sharelink(self, link=None, filename=None):
     def track_by_id(self, track_id=None, filename=None):
-        # track_id = link.split("track/")[1].split("?")[0]
         try:
             track = self.sp.track(track_id)
         except SpotifyException as e:
@@ -105,40 +109,39 @@ class sp_instance:
 
         if filename:
             with open(filename, "w") as fw:
-                json.dump(track, fw, indent=2)
+                json_dump(track, fw, indent=2)
         return track
-    
-    def record_manager(self, track_info, args=None, playlist_id=None):
+
+    def record_manager(self, track_info, args=None, playlist_id=None, record=True):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
         duration_ms = track_info['duration_ms']
         duration_s = int(duration_ms / 1000) + 1
 
-        # if 'output_filepath' in track_info:
-        #     filepath = track_info['output_filepath']
-        # else:
         filename = f"{track_info['name']} - {','.join([artist['name'] for artist in track_info['artists']])}"
-        filename = filename.replace('/', '_').replace(' ', '_').replace('\"', '_').replace('\'', '_').replace(',', '_')
+        filename = filename.replace('/', '_').replace(' ', '_').replace('\"', '_').replace('\'', '_').replace(',', '_').replace('$','_')
 
         filepath = f"{OUT_FOLDER}/{filename}.mp3" if not playlist_id else f"{OUT_FOLDER}/{playlist_id}/{filename}.mp3"
 
-        file_exists = os.path.exists(filepath)
+        file_exists = exists(filepath)
         if file_exists:
             DINFO(f"An existing recorded file was found at {filepath}")
 
-        if not file_exists or args.replace:
-            track_info['output_filepath'] = filepath
+        if record:
+            if not file_exists or args.overwrite:
+                track_info['output_filepath'] = filepath
 
-            spotdl_cmd = f"./spotdl.sh {uri} \"{filepath}\" {duration_s} {'1' if self.verbose else ''}"
-            os.system(spotdl_cmd)
-        else:
-            return False
+                spotdl_cmd = f"./spotdl.sh {uri} \"{filepath}\" {duration_s} {'1' if self.verbose else ''}"
+                system(spotdl_cmd)
 
-        if not os.path.exists(filepath):
+        if not exists(filepath):
             DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
             return False
 
-        self.edit_metadata(filepath, track_info)
+        if not file_exists: # If file doesn't existed before, but now exists
+            self.edit_metadata(filepath, track_info)
+            self.add_lyrics(args.lyrics_mode, filepath, track_info)
+
         return filepath
 
     def search_track(self, track_name=None, filename=None):
@@ -150,7 +153,7 @@ class sp_instance:
 
         if filename:
             with open(filename, "w") as fw:
-                json.dump(tracks, fw, indent=2)
+                json_dump(tracks, fw, indent=2)
         return tracks
 
     def playlist_by_id(self, playlist_id=None, filename=None):
@@ -165,12 +168,15 @@ class sp_instance:
 
         if filename:
             with open(filename, "w") as fw:
-                json.dump(results, fw, indent=2)
+                json_dump(results, fw, indent=2)
         return results
 
     def print_track_info(self, info=None):
         if not info:
             return DINFO("No track info, exit")
+
+        with open("track.json", "w") as fo:
+            json_dump(info, fo)
 
         duration = int(info['duration_ms'])
         duration = f"{duration/60000:.0f}:{duration/1000%60:02.0f}" if duration else None
@@ -348,14 +354,24 @@ class sp_instance:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Spotify Recorder')
-    parser.add_argument('-v', '--verbose', action='store_true', default=False, help="enable verbose mode")
-    parser.add_argument("links", action='store', nargs='+')
+    parser = ArgumentParser(description='Spotify Recorder')
+#     parser = ArgumentParser(description='Spotify Recorder', usage=f"""
+# python3 {argv[0]} <share link> or <query>  [options]
+# Example : python3 {argv[0]} https://open.spotify.com/track/X  [options]
+#           python3 {argv[0]} https://open.spotify.com/playlist/X  [options]
+#           python3 {argv[0]} --search \"song name author\"  [options]""")
+
+    parser.add_argument("links", action='store', nargs='+') # song / playlist uri
     parser.add_argument('-s', '--search', action='store', nargs=1, help="search for a song")
-    parser.add_argument('--headless', action='store_true', default=False, help="enable spotify headless mode (requires xfvb)")
+
+    parser.add_argument('-v', '--verbose', action='store_true', default=False, help="enable verbose mode")
+    parser.add_argument('--headless', action='store_true', default=False, help="[NOT YET SUPPORTED] enable spotify headless mode (requires xfvb)")
     parser.add_argument('--infos', action='store_true', default=False, help="print infos")
+    parser.add_argument('--overwrite', action='store_true', default=False, help="overwrite song if already exist")
+    parser.add_argument('--lyrics-mode', choices=['none', 'synced', 'unsynced', 'both', 'synced_USLT'], default='', help='Lyrics writing mode')
+
     parser.add_argument('--no-record', action='store_true', default=False, help='don\'t actually record')
-    parser.add_argument('--replace', action='store_true', default=False, help="replace song if already exist")
+    parser.add_argument('-f', '--file', action='store', nargs=1, help='Input file')
 
     args = parser.parse_args()
     # args, unknown = parser.parse_known_args()
@@ -393,8 +409,25 @@ def main():
 
         if args.verbose or args.infos: sp.print_track_info(track_info)
 
-        if not args.no_record:
-            sp.record_manager(track_info, args)
+        sp.record_manager(track_info, args, record=(not args.no_record))
+
+    if args.file:
+        filepath = args.file[0]
+        if not exists(filepath):
+            DERROR(f"--file can't access {filepath}")
+            exit()
+        args.no_record = True
+
+        link = args.links[0]
+        type, id = sp.link_to_id(link)
+        if type != "track":
+            DERROR("--file requires that URI type must be \"track\"")
+
+        track_info = sp.track_by_id(id)
+        if args.verbose or args.infos: sp.print_track_info(track_info)
+        sp.edit_metadata(filepath, track_info)
+        sp.add_lyrics(args.lyrics_mode, filepath, track_info)
+        exit()
 
     for link in args.links:
         type, id = sp.link_to_id(link)
@@ -403,25 +436,23 @@ def main():
 
         if type == "track":
             track_info = sp.track_by_id(id)
+
             if args.verbose or args.infos: sp.print_track_info(track_info)
-            if not args.no_record:
-                sp.record_manager(track_info, args)
+            sp.record_manager(track_info, args, record=(not args.no_record))
 
         elif type == "playlist":
             playlist_path = f"{OUT_FOLDER}/{id}"
-            os.makedirs(playlist_path, exist_ok=True)
+            makedirs(playlist_path, exist_ok=True)
             playlist = sp.playlist_by_id(id, filename=f"{playlist_path}/playlist.json")
 
-            print(len(playlist['tracks']['items']))
+            # print(len(playlist['tracks']['items']))
             for track_info in playlist['tracks']['items']:
                 if track_info['is_local'] == True : #or not track_info['is_playable']:
                     # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
                     continue
                 track_info = track_info['track']
-                # track_id = track_info['track']['id']
                 if args.verbose or args.infos: sp.print_track_info(track_info)
-                if not args.no_record:
-                    sp.record_manager(track_info, args, playlist_id=id)
+                sp.record_manager(track_info, args, playlist_id=id, record=(not args.no_record))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 Spotify-recorder is, as it name suggest a Spotify recorder for Linux.
 Given a song name, or its share link, starts Spotify, plays and records the song at its best quality, then exits. As simple as that !
 
-Works on both Pulseaudio and Pipewire.
+Works on both Pulseaudio and Pipewire. Please note that a Spotify client is required 
 
 Songs recorded at 320kbps bitrate by default.
 
@@ -32,6 +32,8 @@ Features to be added in future :
 - [ ] Record multiple songs, and split them.
 - [x] Add support for pipewire
 - [ ] Filter tracks by user's market availability
+- [ ] Add support for albums
+- [ ] Record music without output
 
 ## Dependencies :
 `Python 3+` with `python-dotenv`, `spotipy` and `mutagen` modules.
