@@ -205,8 +205,9 @@ class sp_instance:
         if self.verbose:
             DINFO("Edit metadata")
 
-        from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, WXXX
+        from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, TSRC, WXXX
         f = ID3(filepath)
+
         # https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
 
         # Update title
@@ -217,19 +218,18 @@ class sp_instance:
 
         # Update album
         album = track_info['album']['name'] + (" - single" if track_info['album']['album_type'] == "single" else "")
-        # if len(f.getall('TALB')) == 0:
         f.setall('TALB', [TALB(text=album)])
 
         # Update label
-        # if len(f.getall('TPUB')) == 0:
         f.setall('TPUB', [TPUB(text="spotify-recorder")])
 
         # Update bpm
-        # if len(f.getall('TBPM')) == 0:
         #     f.setall('TBPM', [TBPM(text="bpm")])
 
+        # Update ISRC
+        f.setall('TSRC', [TSRC(encoding=3, text=track_info['external_ids']['isrc'])])
+
         # Update Genre
-        # if len(f.getall('TCON')) == 0 and
         if "genres" in track_info["artists"]:
             genres = ', '.join(g for g in track_info["artists"]["genres"])
             f.setall('TCON', [TCON(text=genres)])
@@ -245,11 +245,9 @@ class sp_instance:
         f.setall('TDRC', [TDRC(text=track_info['album']['release_date'])])
 
         # Update Encoded by # TENC/TSSE
-        # if len(f.getall('TENC')) == 0:
-        f.setall('TENC', [TENC(text="pulseaudio, ffmpeg, mp3splt via spotify-recorder")])
+        f.setall('TENC', [TENC(text="spotify-recorder with ffmpeg, mp3splt")])
 
         # Update track number
-        # if len(f.getall('TRCK')) == 0:
         f.setall('TRCK', [TRCK(text=str(track_info['track_number']))])
         # info['album']['total_tracks']
 
