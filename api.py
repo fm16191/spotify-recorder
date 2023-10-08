@@ -276,6 +276,73 @@ class sp_instance:
                 data=image_data))
         audio.save()
 
+
+    # Available modes : 'none', 'synced', 'unsynced', 'both', 'synced_USLT'
+    def add_lyrics(self, mode, filepath, track_info):
+        if mode == 'none':
+            if self.verbose: DINFO("Skipped lyrics")
+            return
+
+        if self.verbose:
+            DINFO("Adding lyrics")
+
+        # Download lyrics
+        track_id = track_info['id']
+        url = f"https://spotify-lyric-api.herokuapp.com/?trackid={track_id}&format=lrc"
+        res = requests.get(url)
+        if res.status_code == 200:
+            lrc_lyrics = res.json()
+
+            if self.verbose:
+                with open("lyrics.lrc", "w") as fo:
+                    json_dump(lrc_lyrics, fo)
+        else:
+            DINFO(f"Cannot get lyrics (error {res.status_code} : {res.json()})")
+            return
+
+        from mutagen.id3 import ID3, USLT, SYLT, TIT2, Encoding
+        audio = ID3(filepath)
+
+        #     "external_ids": {
+        #     "isrc": "USAT21811468"
+        # },
+
+
+
+        # UNSYNCED
+        if mode == 'unsycned' or mode == 'both':
+            uslt_lyrics = "\n".join([a['words'] for a in lrc_lyrics['lines']])
+            audio["USLT::eng"] = USLT(encoding=3, lang=u'eng', text=uslt_lyrics)
+
+        # SYNCED
+        lrc_data = []
+        for item in lrc_lyrics['lines']:
+            text = item['words']
+            timer = item['timeTag']
+            tm = timer.split(":")
+            ts = tm[1].split(".")
+
+            min = int(tm[0])
+            sec = int(ts[0])
+            ms = int(ts[1]) * 10
+            timestamp = (min * 60 + sec) * 1000 + ms
+
+            lrc_data.append((text, timestamp))
+        if lrc_data[-1][0] == '':
+            lrc_data = lrc_data[:-1]
+
+        if mode == 'synced' or mode == 'both':
+            audio.setall("SYLT", [SYLT(encoding=Encoding.UTF8, lang='eng', format=2, type=1, text=lrc_data)])
+
+        if mode == 'synced_USLT':
+            sylt_lyrics = "".join([f"[{a['timeTag']}]{a['words']}\n" for a in lrc_lyrics['lines']])
+            audio["USLT::eng"] = USLT(encoding=3, lang=u'eng', text=sylt_lyrics)
+
+        audio.setall('TIT2', [TIT2(text="both !")])
+
+        # audio["SYLT::eng"] = SYLT(encoding=3, text=lrc_data, format=1, type=1)
+        # audio.add(SYLT(encoding=3, text=lrc_data, format=2, type=1))
+
     __search_track = search_track
     # __get_likes = get_likes
 
