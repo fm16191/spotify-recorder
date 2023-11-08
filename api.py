@@ -255,25 +255,29 @@ class sp_instance:
 
         f.save()
 
-        # Cover
-        link_artwork = track_info["album"]["images"][0]["url"]
-        # DINFO(link_artwork)
-        image_data = requests.get(link_artwork, stream=True).content
-        # DINFO(len(image_data))
-        mime = 'image/jpeg'
-        if '.png' in link_artwork:
-            mime = 'image/png'
+        # Album Cover
+        album_cover_link = track_info["album"]["images"][0]["url"]
+        try:
+            res = requests.get(album_cover_link, stream=True)
+            if not res.status_code == 200:
+                raise requests.exceptions.RequestException("Request didn't get through")
+            album_cover_data = res.content
+        except:
+            pass
+        finally:
+            mime = 'image/jpeg'
+            if '.png' in album_cover_link:
+                mime = 'image/png'
 
-        audio = mutagen.File(filepath)
-        audio.tags.add(
-            APIC(
-                # encoding=3, # 3 is for utf-8
-                mime=mime, # image/jpeg or image/png
-                type=3, # 3 is for the cover image
-                desc=u'Cover',
-                data=image_data))
-        audio.save()
-
+            audio = mutagen.File(filepath)
+            audio.tags.add(
+                APIC(
+                    # encoding=3, # 3 is for utf-8
+                    mime=mime, # image/jpeg or image/png
+                    type=3, # 3 is for the cover image
+                    desc=u'Cover',
+                    data=album_cover_data))
+            audio.save()
 
     # Available modes : 'none', 'synced', 'unsynced', 'both', 'synced_USLT'
     def add_lyrics(self, mode, filepath, track_info):
@@ -287,17 +291,20 @@ class sp_instance:
         # Download lyrics
         track_id = track_info['id']
         url = f"https://spotify-lyric-api.herokuapp.com/?trackid={track_id}&format=lrc"
-        res = requests.get(url)
-        if res.status_code == 200:
-            lrc_lyrics = res.json()
-
-            if self.verbose:
-                with open("lyrics.lrc", "w") as fo:
-                    json_dump(lrc_lyrics, fo)
-        else:
-            DINFO(f"Cannot get lyrics (error {res.status_code} : {res.json()})")
+        try:
+            res = requests.get(url)
+            if res.status_code == 200 and res.headers.get('Content-Type') == 'application/json':
+                lrc_lyrics = res.json()
+            else:
+                DERROR(f"Failed to get lyrics. Status: {res.status_code}, Content-Type: {res.headers.get('Content-Type')}, Response: {res.text}")
+                return
+        except ValueError as e:
+            return DERROR(f"Failed to download lyrics. Invalid JSON response: {res.text}")
+        except Exception as e:
+            DERROR(f"Failed to download lyrics. Unexpected error : {e}")
             return
 
+        # Handle lyrics
         from mutagen.id3 import ID3, USLT, SYLT, TIT2, Encoding
         audio = ID3(filepath)
 
