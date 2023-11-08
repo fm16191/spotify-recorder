@@ -8,7 +8,6 @@ from json import dump as json_dump
 from os import getenv, makedirs, system
 from os.path import exists
 from utils import *
-# import subprocess
 from argparse import ArgumentParser
 import mutagen
 from mutagen.id3 import Encoding
@@ -82,13 +81,6 @@ class sp_instance:
 
     #     cp = playing['item']
     #     print(f"Listening {cp['name']} by {', '.join([a['name'] for a in cp['artists']])} [{cp['album']['name']}] on {playing['device']['name']}")
-
-    # def get_spotify_sink(self):
-    #     p = subprocess.run(
-    #         """get_spotify_sink(){ spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1); }; while [ -z "$spotify_sink" ]; do get_spotify_sink; done; echo $spotify_sink""",
-    #         shell=True, capture_output=True)
-    #     result = p.stdout.decode()
-    #     print(result.strip())
 
     # def record(self, filename):
     #     system(f'parecord --latency-msec=1 -d alsa_output.pci-0000_05_00.6.analog-stereo.monitor --fix-channels --fix-format --fix-rate {filename} &')
@@ -309,12 +301,6 @@ class sp_instance:
         from mutagen.id3 import ID3, USLT, SYLT, TIT2, Encoding
         audio = ID3(filepath)
 
-        #     "external_ids": {
-        #     "isrc": "USAT21811468"
-        # },
-
-
-
         # UNSYNCED
         if mode == 'unsycned' or mode == 'both':
             uslt_lyrics = "\n".join([a['words'] for a in lrc_lyrics['lines']])
@@ -343,11 +329,6 @@ class sp_instance:
         if mode == 'synced_USLT':
             sylt_lyrics = "".join([f"[{a['timeTag']}]{a['words']}\n" for a in lrc_lyrics['lines']])
             audio["USLT::eng"] = USLT(encoding=3, lang=u'eng', text=sylt_lyrics)
-
-        audio.setall('TIT2', [TIT2(text="both !")])
-
-        # audio["SYLT::eng"] = SYLT(encoding=3, text=lrc_data, format=1, type=1)
-        # audio.add(SYLT(encoding=3, text=lrc_data, format=2, type=1))
 
     __search_track = search_track
     # __get_likes = get_likes
