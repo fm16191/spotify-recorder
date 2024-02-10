@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ### SPOTIFY RECORDER
 
 # command -v jq >/dev/null 2>&1 || { echo >&2 "jq was not found"; exit 1; }
