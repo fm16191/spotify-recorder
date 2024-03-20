@@ -1,11 +1,11 @@
 from datetime import datetime
 
 def DOK(content):
-    print(f"\033[92m[{datetime.now().strftime('%Y %b.%d %H:%M:%S')}] {content}\033[0m")
+    return print(f"\033[92m[{datetime.now().strftime('%Y %b.%d %H:%M:%S')}] {content}\033[0m"), True
 def DINFO(content):
     print(f"\033[93m[{datetime.now().strftime('%Y %b.%d %H:%M:%S')}] {content}\033[0m")
 def DERROR(content):
-    return print(f"\033[91m[{datetime.now().strftime('%Y %b.%d %H:%M:%S')}] {content}\033[0m")
+    return print(f"\033[91m[{datetime.now().strftime('%Y %b.%d %H:%M:%S')}] {content}\033[0m"), False
 def OK(content):
     print(f"\033[92m{content}\033[0m")
 def INFO(content):

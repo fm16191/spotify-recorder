@@ -118,6 +118,8 @@ class sp_instance:
         file_exists = exists(filepath)
         if file_exists:
             DINFO(f"An existing recorded file was found at {filepath}")
+            if args.update_metadata:
+                self.edit_metadata(filepath, track_info)
 
         if record:
             if not file_exists or args.overwrite:
@@ -203,7 +205,7 @@ class sp_instance:
         if self.verbose:
             DINFO("Edit metadata")
 
-        from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, TSRC, WXXX
+        from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, TSRC, WXXX
         f = ID3(filepath)
 
         # https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
@@ -213,6 +215,9 @@ class sp_instance:
 
         # Update artist
         f.setall('TPE1', [TPE1(text=', '.join([artist['name'] for artist in track_info['artists']]))])
+
+        # Update album artist
+        f.setall('TPE2', [TPE2(text=', '.join([artist['name'] for artist in track_info['album']['artists']]))])
 
         # Update album
         album = track_info['album']['name'] + (" - single" if track_info['album']['album_type'] == "single" else "")
@@ -224,7 +229,7 @@ class sp_instance:
         # Update bpm
         #     f.setall('TBPM', [TBPM(text="bpm")])
 
-        # Update ISRC
+        # Update TSRC
         f.setall('TSRC', [TSRC(encoding=3, text=track_info['external_ids']['isrc'])])
 
         # Update Genre
