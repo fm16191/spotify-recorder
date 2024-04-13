@@ -361,6 +361,7 @@ def main():
     parser.add_argument('--headless', action='store_true', default=False, help="[NOT YET SUPPORTED] enable spotify headless mode (requires xfvb)")
     parser.add_argument('--infos', action='store_true', default=False, help="print infos")
     parser.add_argument('--overwrite', action='store_true', default=False, help="overwrite song if already exist")
+    parser.add_argument('--update-metadata', action='store_true', default=False, help='update metadata if file already exists')
     parser.add_argument('--lyrics-mode', choices=['none', 'synced', 'unsynced', 'both', 'synced_USLT'], default='', help='Lyrics writing mode')
 
     parser.add_argument('--no-record', action='store_true', default=False, help='don\'t actually record')
