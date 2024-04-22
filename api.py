@@ -5,6 +5,7 @@ from spotipy.exceptions import *
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 from dotenv import load_dotenv
 from json import dump as json_dump
+from json import load as json_load
 from os import getenv, makedirs, system
 from os.path import exists
 from utils import *
@@ -39,6 +40,12 @@ class sp_instance:
         self.scope = "user-library-read"
 
         self.sp = Spotify(client_credentials_manager=self.client_credentials_manager, auth_manager=SpotifyOAuth(scope=self.scope))
+
+    def fix_filename(self, filename:str) -> str:
+        filename = filename.replace('/', '_').replace(' ', '_').replace('\"', '_').replace('\'', '_').replace(',', '_').replace('$','_').replace(':','_')
+        while '__' in filename:
+            filename = filename.replace('__', '_')
+        return filename
 
     def link_to_id(self, link):
         type = False
@@ -104,22 +111,74 @@ class sp_instance:
                 json_dump(track, fw, indent=2)
         return track
 
-    def record_manager(self, track_info, args=None, playlist_id=None, record=True):
+    def playlist_by_id(self, playlist_id=None, filename=None) -> dict:
+        if not playlist_id:
+            return INFO("No playlist specified"), None
+
+        results = self.sp.playlist(playlist_id)
+        tracks = results['tracks']
+        while tracks['next']:
+            tracks = self.sp.next(tracks)
+            results['tracks']['items'].extend(tracks['items'])
+
+        if filename:
+            with open(filename, "w") as fw:
+                json_dump(results, fw, indent=2)
+        return results
+    
+    def record_playlist(self, playlist_id, args):
+        # playlist = self.playlist_by_id(playlist_id=playlist_id, filename=f"{playlist_path}/playlist.json")
+        playlist_info = self.playlist_by_id(playlist_id=playlist_id)
+        playlist_owner = playlist_info['owner']['display_name']
+        playlist_name = playlist_info['name']
+        playlist_songs_count = len(playlist_info['tracks']['items'])
+
+        playlist_fname = self.fix_filename(f"{playlist_id} - {playlist_owner} - {playlist_name}")
+        playlist_fpath = f"{OUT_FOLDER}/{playlist_fname}"
+        makedirs(playlist_fpath, exist_ok=True)
+
+        playlist_json_path = f"{playlist_fpath}/playlist.json"
+        if exists(playlist_json_path):
+            fo = open(playlist_json_path)
+            new_snapshot_id = json_load(fo)["snapshot_id"]
+
+        print(new_snapshot_id, playlist_info["snapshot_id"])
+        if new_snapshot_id == playlist_info["snapshot_id"]:
+            print("No change in playlist")
+            print(f"Total songs : {playlist_songs_count}")
+        else:
+            print("Playlist has changed")
+
+            with open(playlist_json_path, "w") as fw:
+                json_dump(playlist_info, fw, indent=2)
+
+        # faire summary ici
+        # via dry-run ?
+
+        for track_info in playlist_info['tracks']['items']:
+            if track_info['is_local'] == True : #or not track_info['is_playable']:
+                # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
+                continue
+            track_info = track_info['track']
+            if args.verbose or args.infos: self.print_track_info(track_info)
+            self.record_manager(track_info, playlist_fpath, args, playlist_name=playlist_name, record=(not args.no_record))
+
+    def record_manager(self, track_info, folder_path, args=None, playlist_name=None, record=True):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
         duration_ms = track_info['duration_ms']
-        duration_s = int(duration_ms / 1000) + 1
+        duration_s = duration_ms // 1000 + 1
 
         filename = f"{track_info['name']} - {','.join([artist['name'] for artist in track_info['artists']])}"
-        filename = filename.replace('/', '_').replace(' ', '_').replace('\"', '_').replace('\'', '_').replace(',', '_').replace('$','_')
+        filename = self.fix_filename(filename)
 
-        filepath = f"{OUT_FOLDER}/{filename}.mp3" if not playlist_id else f"{OUT_FOLDER}/{playlist_id}/{filename}.mp3"
+        filepath = f"{folder_path}/{filename}.mp3"
 
         file_exists = exists(filepath)
         if file_exists:
             DINFO(f"An existing recorded file was found at {filepath}")
             if args.update_metadata:
-                self.edit_metadata(filepath, track_info)
+                self.edit_metadata(filepath, track_info, playlist_name=playlist_name)
 
         if record:
             if not file_exists or args.overwrite:
@@ -132,8 +191,8 @@ class sp_instance:
             DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
             return False
 
-        if not file_exists: # If file doesn't existed before, but now exists
-            self.edit_metadata(filepath, track_info)
+        if not file_exists: # If file doesn't existed before, but now exists - if file has been created
+            self.edit_metadata(filepath, track_info, playlist_name=playlist_name)
             self.add_lyrics(args.lyrics_mode, filepath, track_info)
 
         return filepath
@@ -149,21 +208,6 @@ class sp_instance:
             with open(filename, "w") as fw:
                 json_dump(tracks, fw, indent=2)
         return tracks
-
-    def playlist_by_id(self, playlist_id=None, filename=None):
-        if not playlist_id:
-            return INFO("No playlist specified")
-
-        results = self.sp.playlist(playlist_id)
-        tracks = results['tracks']
-        while tracks['next']:
-            tracks = self.sp.next(tracks)
-            results['tracks']['items'].extend(tracks['items'])
-
-        if filename:
-            with open(filename, "w") as fw:
-                json_dump(results, fw, indent=2)
-        return results
 
     def print_track_info(self, info=None):
         if not info:
@@ -201,7 +245,7 @@ class sp_instance:
 * uri : {info['uri']}""")
 
     # Edit music metadata
-    def edit_metadata(self, filepath, track_info):
+    def edit_metadata(self, filepath, track_info, playlist_name=None):
         if self.verbose:
             DINFO("Edit metadata")
 
@@ -403,7 +447,7 @@ def main():
 
         if args.verbose or args.infos: sp.print_track_info(track_info)
 
-        sp.record_manager(track_info, args, record=(not args.no_record))
+        sp.record_manager(track_info, ".", args, record=(not args.no_record))
 
     if args.file:
         filepath = args.file[0]
@@ -432,21 +476,10 @@ def main():
             track_info = sp.track_by_id(id)
 
             if args.verbose or args.infos: sp.print_track_info(track_info)
-            sp.record_manager(track_info, args, record=(not args.no_record))
+            sp.record_manager(track_info, ".", args, record=(not args.no_record))
 
         elif type == "playlist":
-            playlist_path = f"{OUT_FOLDER}/{id}"
-            makedirs(playlist_path, exist_ok=True)
-            playlist = sp.playlist_by_id(id, filename=f"{playlist_path}/playlist.json")
-
-            # print(len(playlist['tracks']['items']))
-            for track_info in playlist['tracks']['items']:
-                if track_info['is_local'] == True : #or not track_info['is_playable']:
-                    # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
-                    continue
-                track_info = track_info['track']
-                if args.verbose or args.infos: sp.print_track_info(track_info)
-                sp.record_manager(track_info, args, playlist_id=id, record=(not args.no_record))
+            sp.record_playlist(id, args)
 
 
 if __name__ == "__main__":

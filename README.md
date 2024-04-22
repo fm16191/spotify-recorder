@@ -26,14 +26,16 @@ Features to be added in future :
 - [x] Add metadata (ID3 tagging)
 - [ ] Add option to start spotify headlessly
 - [ ] Make API only a feature, remove it's default necessity
+- [ ] Summary of songs recorded within a playlist
 - [ ] Add bitrate and file extension choice support.
+- [ ] Option for 160/320kbps
 - [ ] Record a song based on user's likes.
 - [ ] Record the current played song.
 - [ ] Record multiple songs, and split them.
 - [x] Add support for pipewire
 - [ ] Filter tracks by user's market availability
 - [ ] Add support for albums
-- [ ] Record music without output
+- [ ] Record music without output (dry-run)
 
 ## Dependencies :
 `Python 3+` with `python-dotenv`, `spotipy` and `mutagen` modules.
