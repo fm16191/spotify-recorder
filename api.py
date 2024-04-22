@@ -249,7 +249,7 @@ class sp_instance:
         if self.verbose:
             DINFO("Edit metadata")
 
-        from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, TSRC, WXXX
+        from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TPUB, TBPM, TCON, APIC, TDRC, TENC, TRCK, TSRC, WXXX, COMM
         f = ID3(filepath)
 
         # https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
@@ -293,6 +293,12 @@ class sp_instance:
 
         # Update Encoded by # TENC/TSSE
         f.setall('TENC', [TENC(text="spotify-recorder with ffmpeg, mp3splt")])
+
+        # Update comments. Usable for example to sort by spotify playlist in user's library
+        comm = "Recorded from Spotify"
+        if playlist_name:
+            comm += f":{playlist_name}"
+        f.setall('COMM', [COMM(text=comm)])
 
         # Update track number
         f.setall('TRCK', [TRCK(text=str(track_info['track_number']))])
