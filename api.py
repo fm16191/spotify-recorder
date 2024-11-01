@@ -135,9 +135,8 @@ class sp_instance:
                 json_dump(results, fw, indent=2)
         return results
     
-    def record_playlist(self, playlist_id, args):
+    def record_playlist(self, playlist_id, playlist_info, args):
         # playlist = self.playlist_by_id(playlist_id=playlist_id, filename=f"{playlist_path}/playlist.json")
-        playlist_info = self.playlist_by_id(playlist_id=playlist_id)
         playlist_owner = playlist_info['owner']['display_name']
         playlist_name = playlist_info['name']
         playlist_songs_count = len(playlist_info['tracks']['items'])
@@ -147,27 +146,45 @@ class sp_instance:
         makedirs(playlist_fpath, exist_ok=True)
 
         playlist_json_path = f"{playlist_fpath}/playlist.json"
+
+        new_snapshot_id = None
         if exists(playlist_json_path):
             fo = open(playlist_json_path)
             new_snapshot_id = json_load(fo)["snapshot_id"]
+            print(new_snapshot_id, playlist_info["snapshot_id"])
 
-        print(new_snapshot_id, playlist_info["snapshot_id"])
-        if new_snapshot_id == playlist_info["snapshot_id"]:
+        if new_snapshot_id and new_snapshot_id == playlist_info["snapshot_id"]:
             print("No change in playlist")
             print(f"Total songs : {playlist_songs_count}")
-        else:
-            print("Playlist has changed")
-
+        else :
+            print("Creating playlist or updating playlist")
             with open(playlist_json_path, "w") as fw:
                 json_dump(playlist_info, fw, indent=2)
 
+        recorded = self.print_playlist_info(playlist_info)
         # faire summary ici
         # via dry-run ?
 
-        for track_info in playlist_info['tracks']['items']:
-            if track_info['is_local'] == True : #or not track_info['is_playable']:
-                # DINFO(f"Local track : {track_info['track']['name']} - {','.join([artist for artist in track_info['track']['artists']])}")
+        trackinfolist = playlist_info['tracks']['items']
+        if args.order == 'random':
+            from random import shuffle
+            shuffle(trackinfolist)
+        elif args.order == 'last':
+            trackinfolist.reverse()
+
+        for track_info in trackinfolist:
+            filename = f"{track_info['track']['name']} - {', '.join([artist['name'] for artist in track_info['track']['artists']])}"
+            print(f"Song : {filename} ... ", end='')
+            if track_info['track']['available_markets'] == []:
+                print("It seems this isn't available in any market ... Skipping.")
                 continue
+            if track_info['is_local'] == True : #or not track_info['is_playable']:
+                continue
+            if exists(self.set_track_filename(track_info['track'], playlist_fpath)):
+                print("Track recorded - continue")
+                continue
+            
+            print("")
             track_info = track_info['track']
             if args.verbose or args.infos: self.print_track_info(track_info)
             self.record_manager(track_info, playlist_fpath, args, playlist_name=playlist_name, record=(not args.no_record))
@@ -178,10 +195,7 @@ class sp_instance:
         duration_ms = track_info['duration_ms']
         duration_s = duration_ms // 1000 + 1
 
-        filename = f"{track_info['name']} - {','.join([artist['name'] for artist in track_info['artists']])}"
-        filename = self.fix_filename(filename)
-
-        filepath = f"{folder_path}/{filename}.mp3"
+        filepath = self.set_track_filename(track_info, folder_path)
 
         file_exists = exists(filepath)
         if file_exists:
@@ -213,6 +227,19 @@ class sp_instance:
             self.add_lyrics(args.lyrics_mode, filepath, track_info)
 
         return filepath
+
+    def set_track_filename(self, track_info, folder_path=None):
+        filename = f"{track_info['name']} - {','.join([artist['name'] for artist in track_info['artists']])}"
+        filename = self.fix_filename(filename)
+        filepath = f"{folder_path + '/' if folder_path else ''}{filename}.mp3"
+        return filepath
+
+    def set_playlist_fpath(self, playlist_info):
+        playlist_owner = playlist_info['owner']['display_name']
+        playlist_name = playlist_info['name']
+        playlist_fname = self.fix_filename(f"{playlist_info['id']} - {playlist_owner} - {playlist_name}")
+        playlist_fpath = f"{OUT_FOLDER}/{playlist_fname}"
+        return playlist_fpath
 
     def search_track(self, track_name=None, filename=None):
         if not track_name:
@@ -260,6 +287,35 @@ class sp_instance:
 * external_ids['isrc'] : {info['external_ids']['isrc']}
 * preview_url : {info['preview_url']}
 * uri : {info['uri']}""")
+
+    def print_playlist_info(self, playlist_info):
+        if not playlist_info:
+            return DINFO("No playlist info, exit")
+
+        playlist_fpath = self.set_playlist_fpath(playlist_info)
+
+        total_songs = playlist_info['tracks']['total']
+
+        recorded = [False for x in range(total_songs)]
+        print(f"Recorded {'Song':^26s}  | filepath")
+
+        for i, item in enumerate(playlist_info['tracks']['items']):
+            item = item['track']
+
+            filepath = self.set_track_filename(item, playlist_fpath)
+
+            filename = f"{item['name']} - {','.join([artist['name'] for artist in item['artists']])}"
+            if len(filename) > 30: filename = filename[:29] + "…"
+
+            str_exists = ' '
+            if exists(filepath): recorded[i] = True; str_exists = 'x'
+
+            print(f"  [{str_exists}] {filename[0:30].ljust(30, ' ')} | {filepath}")
+
+        total_recorded = sum(x for x in recorded)
+        # print(total_recorded)
+        # print(len(recorded))
+        print(f"Songs recorded : {total_recorded} / {total_songs} ({total_recorded/total_songs * 100:.1f}%)")
 
     # Edit music metadata
     def edit_metadata(self, filepath, track_info, playlist_name=None):
@@ -430,6 +486,7 @@ def main():
     parser.add_argument('--overwrite', action='store_true', default=False, help="overwrite song if already exist")
     parser.add_argument('--update-metadata', action='store_true', default=False, help='update metadata if file already exists')
     parser.add_argument('--lyrics-mode', choices=['none', 'synced', 'unsynced', 'both', 'synced_USLT'], default='', help='Lyrics writing mode')
+    parser.add_argument('--order', choices=['first', 'last', 'random'], default='last', help='Which song to start with when recording playlist')
 
     parser.add_argument('--no-record', action='store_true', default=False, help='don\'t actually record')
     parser.add_argument('-f', '--file', action='store', nargs=1, help='Input file')
@@ -442,10 +499,10 @@ def main():
     sp = sp_instance(args)
 
     if len(args.links) == 0:
-        INFO(f"Usage : python3 {sys.argv[0]} <share link> or <query>\n  [options]")
-        print(f"Example : python3 {sys.argv[0]} https://open.spotify.com/track/X  [options]")
-        print(f"          python3 {sys.argv[0]} https://open.spotify.com/playlist/X  [options]")
-        print(f"          python3 {sys.argv[0]} --search \"song name author\"  [options]")
+        INFO(f"Usage : python3 {argv[0]} <share link> or <query>\n  [options]")
+        print(f"Example : python3 {argv[0]} https://open.spotify.com/track/X  [options]")
+        print(f"          python3 {argv[0]} https://open.spotify.com/playlist/X  [options]")
+        print(f"          python3 {argv[0]} --search \"song name author\"  [options]")
         return
 
     if args.search:
@@ -502,7 +559,11 @@ def main():
             sp.record_manager(track_info, ".", args, record=(not args.no_record))
 
         elif type == "playlist":
-            sp.record_playlist(id, args)
+            playlist_info = sp.playlist_by_id(playlist_id=id)
+
+            if args.verbose or args.infos: sp.print_playlist_info(playlist_info)
+
+            sp.record_playlist(id, playlist_info, args)
 
 
 if __name__ == "__main__":
