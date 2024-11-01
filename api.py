@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from json import dump as json_dump
 from json import load as json_load
 from os import getenv, makedirs, system
+import subprocess
 from os.path import exists
 from utils import *
 from argparse import ArgumentParser
@@ -14,6 +15,14 @@ import mutagen
 from mutagen.id3 import Encoding
 import requests
 from sys import argv
+
+# SIG-INT control
+import signal
+def signal_handler(sig, frame):
+    print("\nReceived Ctrl+C, stopping...")
+    exit(1);
+signal.signal(signal.SIGINT, signal_handler)
+
 
 load_dotenv()
 
@@ -185,7 +194,15 @@ class sp_instance:
                 track_info['output_filepath'] = filepath
 
                 spotdl_cmd = f"./spotdl.sh {uri} \"{filepath}\" {duration_s} {'1' if self.verbose else ''}"
-                system(spotdl_cmd)
+                # print(spotdl_cmd)
+                # system(spotdl_cmd)
+
+                try:
+                    subprocess.run(spotdl_cmd, shell=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error: Bash script exited with a non-zero status: {e.returncode}")
+                except Exception as e:
+                    print(f"Error while running bash script: {e}")
 
         if not exists(filepath):
             DERROR(f"\"{filepath}\" : Filepath does not exist. Exiting")
