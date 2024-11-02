@@ -120,11 +120,14 @@ class sp_instance:
                 json_dump(track, fw, indent=2)
         return track
 
-    def playlist_by_id(self, playlist_id=None, filename=None) -> dict:
-        if not playlist_id:
-            return INFO("No playlist specified"), None
+    def type_by_id(self, type=None, id=None, filename=None) -> dict:
+        if not id:
+            return INFO(f"No {type} specified"), None
 
-        results = self.sp.playlist(playlist_id)
+        if type == "playlist": results = self.sp.playlist(id)
+        elif type == "album": results = self.sp.album(id)
+
+        else: DERROR(f"type {type} not expected here\n"); exit(1)
         tracks = results['tracks']
         while tracks['next']:
             tracks = self.sp.next(tracks)
@@ -135,37 +138,30 @@ class sp_instance:
                 json_dump(results, fw, indent=2)
         return results
     
-    def record_playlist(self, playlist_id, playlist_info, args):
-        # playlist = self.playlist_by_id(playlist_id=playlist_id, filename=f"{playlist_path}/playlist.json")
-        playlist_owner = playlist_info['owner']['display_name']
-        playlist_name = playlist_info['name']
-        playlist_songs_count = len(playlist_info['tracks']['items'])
+    def record_multiple(self, type, info, args):
+        fname, fpath = self.set_fpath(type, info)
+        songs_count = len(info['tracks']['items'])
+        makedirs(fpath, exist_ok=True)
 
-        playlist_fname = self.fix_filename(f"{playlist_id} - {playlist_owner} - {playlist_name}")
-        playlist_fpath = f"{OUT_FOLDER}/{playlist_fname}"
-        makedirs(playlist_fpath, exist_ok=True)
-
-        playlist_json_path = f"{playlist_fpath}/playlist.json"
+        json_path = f"{fpath}/{type}.json"
 
         new_snapshot_id = None
-        if exists(playlist_json_path):
-            fo = open(playlist_json_path)
+        if exists(json_path) and type == "playlist":
+            fo = open(json_path)
             new_snapshot_id = json_load(fo)["snapshot_id"]
-            print(new_snapshot_id, playlist_info["snapshot_id"])
+            print(new_snapshot_id, info["snapshot_id"])
 
-        if new_snapshot_id and new_snapshot_id == playlist_info["snapshot_id"]:
-            print("No change in playlist")
-            print(f"Total songs : {playlist_songs_count}")
+        if new_snapshot_id and new_snapshot_id == info["snapshot_id"]:
+            print(f"No change in {type}")
+            print(f"Total songs : {songs_count}")
         else :
-            print("Creating playlist or updating playlist")
-            with open(playlist_json_path, "w") as fw:
-                json_dump(playlist_info, fw, indent=2)
+            print(f"Creating {type} or updating {type}")
+            with open(json_path, "w") as fw:
+                json_dump(info, fw, indent=2)
 
-        recorded = self.print_playlist_info(playlist_info)
-        # faire summary ici
-        # via dry-run ?
+        recorded = self.print_multiple_info(type, info)
 
-        trackinfolist = playlist_info['tracks']['items']
+        trackinfolist = info['tracks']['items']
         if args.order == 'random':
             from random import shuffle
             shuffle(trackinfolist)
@@ -173,23 +169,26 @@ class sp_instance:
             trackinfolist.reverse()
 
         for track_info in trackinfolist:
-            filename = f"{track_info['track']['name']} - {', '.join([artist['name'] for artist in track_info['track']['artists']])}"
+            if type == "playlist": track_info = track_info['track']
+
+            filename = f"{track_info['name']} - {', '.join([artist['name'] for artist in track_info['artists']])}"
             print(f"Song : {filename} ... ", end='')
-            if track_info['track']['available_markets'] == []:
+            if track_info['available_markets'] == []:
                 print("It seems this isn't available in any market ... Skipping.")
                 continue
             if track_info['is_local'] == True : #or not track_info['is_playable']:
                 continue
-            if exists(self.set_track_filename(track_info['track'], playlist_fpath)):
+            if exists(self.set_track_filename(track_info, fpath)):
                 print("Track recorded - continue")
                 continue
             
             print("")
-            track_info = track_info['track']
-            if args.verbose or args.infos: self.print_track_info(track_info)
-            self.record_manager(track_info, playlist_fpath, args, playlist_name=playlist_name, record=(not args.no_record))
+            if args.verbose or args.infos: 
+                if type == "album": track_info = self.sp.track(track_info['id'])
+                self.print_track_info(track_info)
+            self.record_manager(track_info, fpath, args, fname=fname, record=(not args.no_record))
 
-    def record_manager(self, track_info, folder_path, args=None, playlist_name=None, record=True):
+    def record_manager(self, track_info, folder_path, args=None, fname=None, record=True):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
         duration_ms = track_info['duration_ms']
@@ -234,12 +233,13 @@ class sp_instance:
         filepath = f"{folder_path + '/' if folder_path else ''}{filename}.mp3"
         return filepath
 
-    def set_playlist_fpath(self, playlist_info):
-        playlist_owner = playlist_info['owner']['display_name']
-        playlist_name = playlist_info['name']
-        playlist_fname = self.fix_filename(f"{playlist_info['id']} - {playlist_owner} - {playlist_name}")
-        playlist_fpath = f"{OUT_FOLDER}/{playlist_fname}"
-        return playlist_fpath
+    def set_fpath(self, type, info):
+        if type == "playlist": author = info['owner']['display_name']
+        else: author = ', '.join([artist['name'] for artist in info['artists']])
+        name = info['name']
+        fname = self.fix_filename(f"{info['id']} - {author} - {name}")
+        fpath = f"{OUT_FOLDER}/{fname}"
+        return fname, fpath
 
     def search_track(self, track_name=None, filename=None):
         if not track_name:
@@ -288,21 +288,21 @@ class sp_instance:
 * preview_url : {info['preview_url']}
 * uri : {info['uri']}""")
 
-    def print_playlist_info(self, playlist_info):
-        if not playlist_info:
-            return DINFO("No playlist info, exit")
+    def print_multiple_info(self, type, info):
+        if not info:
+            return DINFO(f"No {type} info, exit")
 
-        playlist_fpath = self.set_playlist_fpath(playlist_info)
+        fname, fpath = self.set_fpath(type, info)
 
-        total_songs = playlist_info['tracks']['total']
+        total_songs = info['tracks']['total']
 
         recorded = [False for x in range(total_songs)]
         print(f"Recorded {'Song':^26s}  | filepath")
 
-        for i, item in enumerate(playlist_info['tracks']['items']):
-            item = item['track']
+        for i, item in enumerate(info['tracks']['items']):
+            if type == "playlist": item = item['track']
 
-            filepath = self.set_track_filename(item, playlist_fpath)
+            filepath = self.set_track_filename(item, fpath)
 
             filename = f"{item['name']} - {','.join([artist['name'] for artist in item['artists']])}"
             if len(filename) > 30: filename = filename[:29] + "…"
@@ -558,13 +558,12 @@ def main():
             if args.verbose or args.infos: sp.print_track_info(track_info)
             sp.record_manager(track_info, ".", args, record=(not args.no_record))
 
-        elif type == "playlist":
-            playlist_info = sp.playlist_by_id(playlist_id=id)
+        elif type == "album" or type == "playlist":
+            info = sp.type_by_id(type, id)
 
-            if args.verbose or args.infos: sp.print_playlist_info(playlist_info)
+            if args.verbose or args.infos: sp.print_multiple_info(type, info)
 
-            sp.record_playlist(id, playlist_info, args)
-
+            sp.record_multiple(type, info, args)
 
 if __name__ == "__main__":
     main()

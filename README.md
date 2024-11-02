@@ -34,7 +34,7 @@ Features to be added in future :
 - [ ] Record multiple songs, and split them.
 - [x] Add support for pipewire
 - [ ] Filter tracks by user's market availability
-- [ ] Add support for albums
+- [x] Add support for albums
 - [ ] Record music without output (dry-run)
 
 ## Dependencies :
