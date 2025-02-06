@@ -81,10 +81,11 @@ fi
 
 # Start Spotify using URI
 pkill spotify
+sleep 0.1
 spotify --uri="$uri" > /dev/null 2>&1 &
 
 # Start recording before spotify_sink is spotted
-[ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "$tmp_filepath.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
+[ $pipewire = 0 ] && (parecord --latency-msec=20 --device="$module_name".monitor --record --fix-channels --fix-format --fix-rate "$tmp_filepath.rec" || (printf "[!] Error : Recording\n"; exit 1)) &
 
 # (pw-record --latency=20ms --target="$module_name".monitor "$tmp_filepath.rec" || (printf "[!] Error : Recording\n"; exit 0)) &
 
@@ -123,5 +124,7 @@ mv "$f" "$filepath"
 printf "\033[K[+] File saved at %s\n" "$filepath"
 
 # Back to default settings
-[ $pipewire = 0 ] && pactl unload-module "$record_id"
+[ $pipewire = 0 ] && { pactl unload-module "$record_id" || { echo "Can't unload module $record_id"; exit 1; }; }
 # pactl set-default-sink "$pactl_default_output"
+
+exit 0

@@ -170,6 +170,7 @@ class sp_instance:
 
         for track_info in trackinfolist:
             if type == "playlist": track_info = track_info['track']
+            playlist_name=track_info['name']
 
             filename = f"{track_info['name']} - {', '.join([artist['name'] for artist in track_info['artists']])}"
             print(f"Song : {filename} ... ", end='')
@@ -186,9 +187,9 @@ class sp_instance:
             if args.verbose or args.infos: 
                 if type == "album": track_info = self.sp.track(track_info['id'])
                 self.print_track_info(track_info)
-            self.record_manager(track_info, fpath, args, fname=fname, record=(not args.no_record))
+            self.record_manager(track_info, fpath, args, fname=fname, record=(not args.no_record), playlist_name=playlist_name)
 
-    def record_manager(self, track_info, folder_path, args=None, fname=None, record=True):
+    def record_manager(self, track_info, folder_path, args=None, fname=None, record=True, playlist_name=None):
         # self.sp.print_track_info(track_info)
         uri = track_info['uri']
         duration_ms = track_info['duration_ms']
@@ -316,6 +317,7 @@ class sp_instance:
         # print(total_recorded)
         # print(len(recorded))
         print(f"Songs recorded : {total_recorded} / {total_songs} ({total_recorded/total_songs * 100:.1f}%)")
+        print(f"Playlist folder path : \"{fpath}\"")
 
     # Edit music metadata
     def edit_metadata(self, filepath, track_info, playlist_name=None):
@@ -477,7 +479,7 @@ def main():
 #           python3 {argv[0]} https://open.spotify.com/playlist/X  [options]
 #           python3 {argv[0]} --search \"song name author\"  [options]""")
 
-    parser.add_argument("links", action='store', nargs='+') # song / playlist uri
+    parser.add_argument("links", action='store', nargs='*') # song / playlist uri
     parser.add_argument('-s', '--search', action='store', nargs=1, help="search for a song")
 
     parser.add_argument('-v', '--verbose', action='store_true', default=False, help="enable verbose mode")
@@ -485,7 +487,7 @@ def main():
     parser.add_argument('--infos', action='store_true', default=False, help="print infos")
     parser.add_argument('--overwrite', action='store_true', default=False, help="overwrite song if already exist")
     parser.add_argument('--update-metadata', action='store_true', default=False, help='update metadata if file already exists')
-    parser.add_argument('--lyrics-mode', choices=['none', 'synced', 'unsynced', 'both', 'synced_USLT'], default='', help='Lyrics writing mode')
+    parser.add_argument('--lyrics-mode', choices=['none', 'synced', 'unsynced', 'both', 'synced_USLT'], default='none', help='Lyrics writing mode')
     parser.add_argument('--order', choices=['first', 'last', 'random'], default='last', help='Which song to start with when recording playlist')
 
     parser.add_argument('--no-record', action='store_true', default=False, help='don\'t actually record')
@@ -498,7 +500,7 @@ def main():
 
     sp = sp_instance(args)
 
-    if len(args.links) == 0:
+    if not args.search and len(args.links) == 0:
         INFO(f"Usage : python3 {argv[0]} <share link> or <query>\n  [options]")
         print(f"Example : python3 {argv[0]} https://open.spotify.com/track/X  [options]")
         print(f"          python3 {argv[0]} https://open.spotify.com/playlist/X  [options]")
@@ -506,7 +508,7 @@ def main():
         return
 
     if args.search:
-        requested = " ".join(args.links)
+        requested = " ".join(args.search)
 
         if args.verbose:
             DINFO(f"Requested : {requested}")
