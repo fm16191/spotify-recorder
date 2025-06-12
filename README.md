@@ -26,7 +26,7 @@ Features to be added in future :
 - [x] Add metadata (ID3 tagging)
 - [ ] Add option to start spotify headlessly
 - [ ] Make API only a feature, remove it's default necessity
-- [ ] Summary of songs recorded within a playlist
+- [x] Summary of songs recorded within a playlist
 - [ ] Add bitrate and file extension choice support.
 - [ ] Option for 160/320kbps
 - [ ] Record a song based on user's likes.
@@ -59,14 +59,19 @@ core-utils : `grep, tr`
 
 ## Set up :
 
-Get your Spotify API credentials
-1. Go to [Spotify's developper page](https://developer.spotify.com/dashboard/applications) and create an application.
 
-2. Go to "Edit Settings" 
- - In the "Website" input, put `http://localhost:8888`
- - In the "Redirect URIs" input, put `http://localhost:8888/callback`
+Obtain Your Spotify API Credentials
+1. Visit [Spotify's Developer Dashboard](https://developer.spotify.com/dashboard/applications) and create a new application.
 
-3. Edit the .env file and replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` by your respectives CLIENT_ID and CLIENT_SECRET from the Spotify app just created
+2. In the application settings :
+
+- Set the "*App Name*" and "*App Description*" as you wish.
+- In the "*Redirect URIs*" field, enter: `http://127.0.0.1:8000/callback`
+- Under "*Which API/SDKs are you planning to use?*", select **Web API**.
+
+3. Accept the Terms of Service and click Save. Then copy your **Client ID** and **Client Secret**.
+
+4. Open the `.env` file and replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` with the corresponding values you just copied from the Spotify application.
 
 ## Usage :
 `python3 api.py <song name author>` to search and record a song given an input

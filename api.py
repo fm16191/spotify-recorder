@@ -41,9 +41,16 @@ class sp_instance:
         cid = getenv('SPOTIPY_CLIENT_ID')
         secret = getenv('SPOTIPY_CLIENT_SECRET')
 
+        if cid == "YOUR_CLIENT_ID":
+            DERROR("Client ID not set. Please update the .env file with your own Client ID. See README.md for instructions.")
+            exit(1)
+        if secret == "YOUR_CLIENT_SECRET":
+            DERROR("Client Secret not set. Please update the .env file with your own Client Secret. See README.md for instructions.")
+            exit(1)
+
         self.client_credentials_manager = SpotifyClientCredentials(client_id=cid, client_secret=secret)
 
-        # redirect_uri = 'http://localhost:8888/callback'
+        # redirect_uri = 'http://127.0.0.1:8000/callback'
         # username = 'xxxx'
         # self.scope = "user-library-read playlist-modify-public user-modify-playback-state user-read-playback-state user-read-currently-playing user-read-recently-played user-read-playback-position user-top-read app-remote-control streaming"
         self.scope = "user-library-read"
@@ -208,8 +215,6 @@ class sp_instance:
                 track_info['output_filepath'] = filepath
 
                 spotdl_cmd = f"./spotdl.sh {uri} \"{filepath}\" {duration_s} {'1' if self.verbose else ''}"
-                # print(spotdl_cmd)
-                # system(spotdl_cmd)
 
                 try:
                     subprocess.run(spotdl_cmd, shell=True, check=True)
@@ -314,8 +319,6 @@ class sp_instance:
             print(f"  [{str_exists}] {filename[0:30].ljust(30, ' ')} | {filepath}")
 
         total_recorded = sum(x for x in recorded)
-        # print(total_recorded)
-        # print(len(recorded))
         print(f"Songs recorded : {total_recorded} / {total_songs} ({total_recorded/total_songs * 100:.1f}%)")
         print(f"Playlist folder path : \"{fpath}\"")
 
