@@ -24,7 +24,7 @@ fi
 get_spotify_sink(){
     # spotify_sink=$(LANG=en python3 pactl-json-parser/pactl_parser.py | jq 'to_entries[] | {sink:.key} + {value:.value.Properties["media.name"]} | if (.value | contains("Spotify")) then .sink | tonumber else empty end' | tail -f -n1)
     # spotify_sink=$(pactl list sink-inputs | grep -E "Input #|media.name" | xargs | grep -Eoi "#[0-9]* media.name = Spotify" | grep -oi "[0-9]*") # 8x faster
-    spotify_sink=$(pactl list sink-inputs | grep -E "Input #|media.name" | tr -d "[:space:]" | tr -d "\"" | grep -Eoi "#[0-9]*media.name=Spotify" | grep -oi "[0-9]*") # 1.3x even faster + remove xargs dependency
+    spotify_sink=$(LANG=C pactl list sink-inputs | grep -E "Input #|media.name" | tr -d "[:space:]" | tr -d "\"" | grep -Eoi "#[0-9]*media.name=Spotify" | grep -oi "[0-9]*") # 1.3x even faster + remove xargs dependency
 }
 
 
