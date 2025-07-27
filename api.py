@@ -191,8 +191,8 @@ class sp_instance:
                 continue
             
             print("")
-            if args.verbose or args.infos: 
-                if type == "album": track_info = self.sp.track(track_info['id'])
+            if type == "album" and 'album' not in track_info: #new line
+                track_info = self.sp.track(track_info['id'])
                 self.print_track_info(track_info)
             self.record_manager(track_info, fpath, args, fname=fname, record=(not args.no_record), playlist_name=playlist_name)
 
