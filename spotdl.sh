@@ -54,19 +54,19 @@ fi
 
 if [ $pipewire = 0 ]; then
     # Get default output
-    pactl_default_output=$(pactl get-default-sink)
-    # pactl_default_source=$(pactl get-default-source)
+    pactl_default_output=$(LANG=C pactl get-default-sink)
+    # pactl_default_source=$(LANG=C pactl get-default-source)
     module_name="rec-play"
 
-    if ! pactl list sinks | grep "$module_name" > /dev/null;
+    if ! LANG=C pactl list sinks | grep "$module_name" > /dev/null;
     then
         printf "[ ] Loading new module %s" "$module_name"
-        record_id=$(pactl load-module module-combine-sink sink_name="$module_name" slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play") # channels=2 channel_map=stereo remix=no
+        record_id=$(LANG=C pactl load-module module-combine-sink sink_name="$module_name" slaves="$pactl_default_output" sink_properties=device.description="[spotify-recorder]Record-and-Play") # channels=2 channel_map=stereo remix=no
     else
-        record_id=$(pactl list short modules | grep "$module_name" | grep -Eo "^[0-9]*")
+        record_id=$(LANG=C pactl list short modules | grep "$module_name" | grep -Eo "^[0-9]*")
     fi
 
-    if ! pactl list sinks | grep "$module_name" > /dev/null; then
+    if ! LANG=C pactl list sinks | grep "$module_name" > /dev/null; then
         printf "\r[!] Error : Loading new module %s\n" "$module_name"
         exit 1;
     elif [ -n "$verbose" ]; then
